@@ -1,0 +1,264 @@
+/* ===========================================================================
+   VaultComply AI — global stylesheet
+   ---------------------------------------------------------------------------
+   Ported verbatim from section 2 of the original single-file app.py.
+
+   Colours are referenced as CSS custom properties. The properties themselves
+   are generated at runtime from PALETTE in core/config.py and injected by
+   core/theme.py, so Python and CSS never drift apart — change a hex value in
+   core/config.py and both sides follow.
+
+   Inline styles written from Python (components/widgets.py) use the same
+   PALETTE constants directly.
+   =========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+
+html, body, [class*="css"], .stApp { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+.stApp { background-color: var(--vc-bg); color: var(--vc-text); }
+.main .block-container { padding-top: 1.4rem; padding-bottom: 3rem; max-width: 1500px; }
+
+#MainMenu, footer, header [data-testid="stToolbar"] { visibility: hidden; }
+h1, h2, h3, h4, h5, h6 { color: var(--vc-text) !important; letter-spacing: -0.02em; }
+p, span, label, li { color: var(--vc-text); }
+
+/* ── Sidebar ───────────────────────────────────────────── */
+section[data-testid="stSidebar"] {
+    background-color: var(--vc-deep);
+    border-right: 1px solid var(--vc-border);
+}
+section[data-testid="stSidebar"] .block-container { padding-top: 1.2rem; }
+
+/* ── Buttons ───────────────────────────────────────────── */
+.stButton > button {
+    background-color: var(--vc-surface);
+    color: var(--vc-text);
+    border: 1px solid var(--vc-border);
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 0.84rem;
+    padding: 0.45rem 0.9rem;
+    transition: all 0.15s ease-in-out;
+}
+.stButton > button:hover {
+    border-color: var(--vc-accent);
+    color: var(--vc-accent);
+    background-color: var(--vc-hover);
+}
+.stButton > button[kind="primary"] {
+    background-color: var(--vc-accent);
+    border-color: var(--vc-accent);
+    color: var(--vc-accent-ink);
+    font-weight: 600;
+}
+.stButton > button[kind="primary"]:hover {
+    background-color: var(--vc-accent-hi);
+    border-color: var(--vc-accent-hi);
+    color: var(--vc-accent-ink);
+}
+.stButton > button:disabled {
+    background-color: var(--vc-surface-2); color: var(--vc-disabled); border-color: var(--vc-border-soft);
+}
+
+/* ── Download buttons ──────────────────────────────────── */
+.stDownloadButton > button {
+    width: 100%;
+    background-color: var(--vc-surface);
+    color: var(--vc-text);
+    border: 1px solid var(--vc-border);
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 500;
+}
+.stDownloadButton > button:hover { border-color: var(--vc-success); color: var(--vc-success); }
+
+/* ── Inputs ────────────────────────────────────────────── */
+.stTextArea textarea, .stTextInput input, .stSelectbox div[data-baseweb="select"] > div {
+    background-color: var(--vc-deep) !important;
+    color: var(--vc-text) !important;
+    border: 1px solid var(--vc-border) !important;
+    border-radius: 8px !important;
+}
+.stTextArea textarea:focus, .stTextInput input:focus { border-color: var(--vc-accent) !important; }
+
+/* ── Tabs ──────────────────────────────────────────────── */
+.stTabs [data-baseweb="tab-list"] { gap: 6px; border-bottom: 1px solid var(--vc-border); }
+.stTabs [data-baseweb="tab"] {
+    background-color: var(--vc-surface-2);
+    border: 1px solid var(--vc-border);
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    padding: 8px 16px;
+    color: var(--vc-muted);
+    font-size: 0.84rem;
+    font-weight: 500;
+}
+.stTabs [aria-selected="true"] {
+    background-color: var(--vc-surface) !important;
+    color: var(--vc-accent) !important;
+    border-color: var(--vc-accent) !important;
+}
+
+/* ── File uploader ─────────────────────────────────────── */
+[data-testid="stFileUploaderDropzone"] {
+    background-color: var(--vc-deep);
+    border: 1px dashed var(--vc-border);
+    border-radius: 10px;
+}
+[data-testid="stFileUploaderDropzone"]:hover { border-color: var(--vc-accent); }
+
+/* ── Expander ──────────────────────────────────────────── */
+.streamlit-expanderHeader, [data-testid="stExpander"] details {
+    background-color: var(--vc-deep);
+    border: 1px solid var(--vc-border);
+    border-radius: 8px;
+}
+[data-testid="stExpander"] summary { color: var(--vc-muted); font-size: 0.82rem; }
+
+/* ── Custom components ─────────────────────────────────── */
+.vc-topbar {
+    background: linear-gradient(135deg, var(--vc-topbar-from) 0%, var(--vc-bg) 60%);
+    border: 1px solid var(--vc-border);
+    border-radius: 14px;
+    padding: 18px 22px;
+    margin-bottom: 14px;
+}
+.vc-title { font-size: 1.62rem; font-weight: 700; color: var(--vc-text); line-height: 1.15; margin: 0; }
+.vc-title span { color: var(--vc-accent); }
+.vc-sub { font-size: 0.86rem; color: var(--vc-muted); margin: 3px 0 0 0; }
+
+.vc-badge {
+    display: inline-block;
+    background-color: rgba(16,185,129,0.10);
+    border: 1px solid rgba(16,185,129,0.40);
+    color: var(--vc-success);
+    font-size: 0.70rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 999px;
+    margin: 4px 6px 0 0;
+    white-space: nowrap;
+}
+.vc-badge-user {
+    background-color: rgba(6,182,212,0.10);
+    border-color: rgba(6,182,212,0.40);
+    color: var(--vc-accent);
+}
+
+.vc-card {
+    background-color: var(--vc-surface);
+    border: 1px solid var(--vc-border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 12px;
+}
+.vc-card h4 { margin: 0 0 6px 0; font-size: 0.95rem; font-weight: 600; }
+.vc-card p { margin: 0; font-size: 0.80rem; color: var(--vc-muted); line-height: 1.55; }
+
+.vc-kpi {
+    background-color: var(--vc-surface);
+    border: 1px solid var(--vc-border);
+    border-left: 3px solid var(--vc-accent);
+    border-radius: 10px;
+    padding: 14px 16px;
+}
+.vc-kpi .lab { font-size: 0.72rem; color: var(--vc-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.vc-kpi .val { font-size: 1.75rem; font-weight: 700; color: var(--vc-text); line-height: 1.25; }
+.vc-kpi .delta { font-size: 0.72rem; color: var(--vc-success); }
+
+.vc-sec-label {
+    font-size: 0.70rem; font-weight: 700; letter-spacing: 0.10em;
+    text-transform: uppercase; color: var(--vc-muted); margin-bottom: 8px;
+}
+
+.vc-file {
+    display: flex; align-items: center; gap: 9px;
+    background-color: var(--vc-deep);
+    border: 1px solid var(--vc-border);
+    border-radius: 8px;
+    padding: 9px 11px;
+    margin-bottom: 7px;
+}
+.vc-file .dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px; }
+.vc-file .nm { font-size: 0.77rem; color: var(--vc-text); font-family: 'JetBrains Mono', monospace;
+               overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vc-file .st { font-size: 0.66rem; margin-left: auto; white-space: nowrap; }
+
+.vc-paper {
+    background-color: var(--vc-text);
+    color: var(--vc-bg);
+    border-radius: 6px;
+    padding: 26px 30px;
+    font-family: 'Times New Roman', Georgia, serif;
+    line-height: 1.65;
+    box-shadow: 0 8px 26px rgba(0,0,0,0.45);
+}
+.vc-paper h3 { color: var(--vc-bg) !important; font-size: 1.02rem; margin: 0 0 4px 0; }
+.vc-paper p, .vc-paper li, .vc-paper td, .vc-paper th { color: #1e293b !important; font-size: 0.84rem; }
+.vc-paper table { width: 100%; border-collapse: collapse; margin: 12px 0; font-family: 'Inter', sans-serif; }
+.vc-paper th { background-color: var(--vc-bg); color: var(--vc-text) !important; font-size: 0.72rem;
+               text-align: left; padding: 8px 10px; }
+.vc-paper td { border: 1px solid #cbd5e1; padding: 7px 10px; font-size: 0.76rem; }
+.vc-paper .meta { color: #64748b !important; font-size: 0.70rem; font-family: 'Inter', sans-serif; }
+
+.vc-cite {
+    display: inline-block;
+    background-color: rgba(6,182,212,0.12);
+    border: 1px solid rgba(6,182,212,0.45);
+    color: var(--vc-accent);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.70rem;
+    padding: 3px 9px;
+    border-radius: 6px;
+}
+
+.vc-alert-red {
+    background-color: rgba(239,68,68,0.09);
+    border: 1px solid rgba(239,68,68,0.45);
+    border-left: 3px solid var(--vc-danger);
+    border-radius: 9px;
+    padding: 12px 14px;
+}
+.vc-alert-red .t { color: var(--vc-danger); font-weight: 700; font-size: 0.80rem; }
+.vc-alert-red .d { color: var(--vc-muted); font-size: 0.74rem; margin-top: 4px; }
+
+.vc-alert-green {
+    background-color: rgba(16,185,129,0.09);
+    border: 1px solid rgba(16,185,129,0.45);
+    border-left: 3px solid var(--vc-success);
+    border-radius: 9px;
+    padding: 12px 14px;
+}
+.vc-alert-green .t { color: var(--vc-success); font-weight: 700; font-size: 0.80rem; }
+.vc-alert-green .d { color: var(--vc-muted); font-size: 0.74rem; margin-top: 4px; }
+
+.vc-check { display: flex; gap: 9px; padding: 7px 0; border-bottom: 1px solid var(--vc-border-soft); }
+.vc-check .ic { flex: 0 0 16px; font-size: 0.78rem; }
+.vc-check .tx { font-size: 0.76rem; color: #cbd5e1; line-height: 1.4; }
+
+.vc-signoff {
+    background-color: var(--vc-deep);
+    border: 1px solid var(--vc-border);
+    border-radius: 10px;
+    padding: 12px 14px;
+}
+.vc-status-pill {
+    display: inline-block; font-size: 0.74rem; font-weight: 600;
+    padding: 5px 12px; border-radius: 999px;
+}
+.vc-pending { background-color: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.45); color: var(--vc-warn); }
+.vc-approved { background-color: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.45); color: var(--vc-success); }
+
+.vc-quote {
+    background-color: var(--vc-deep); border-left: 3px solid var(--vc-accent);
+    padding: 10px 13px; font-size: 0.76rem; color: #cbd5e1;
+    font-style: italic; border-radius: 0 8px 8px 0;
+}
+.vc-mono { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--vc-muted); }
+.vc-divider { height: 1px; background-color: var(--vc-border); margin: 14px 0; border: none; }
+
+[data-testid="stMetricValue"] { color: var(--vc-text); }
+[data-testid="stDataFrame"] { border: 1px solid var(--vc-border); border-radius: 10px; }
+.stProgress > div > div > div > div { background-color: var(--vc-accent); }
+hr { border-color: var(--vc-border); }
