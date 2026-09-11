@@ -33,6 +33,10 @@ from core import config
 # ── 1. Page configuration ───────────────────────────────────────────────────
 # Must be the first Streamlit call in the process. Every module below defers
 # its st.* calls to function bodies, so importing them here is safe.
+
+if "sidebar_state" not in st.session_state:
+    st.session_state["sidebar_state"] = "expanded"
+
 st.set_page_config(
     page_title=f"{config.APP_NAME} — {config.APP_SUBTITLE}",
     page_icon=config.PAGE_ICON,

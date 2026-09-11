@@ -20,6 +20,7 @@ def k(cat: str, name: str) -> str:
 
 def init_state() -> None:
     st.session_state.setdefault("page", DEFAULT_PAGE)
+    st.session_state.setdefault("sidebar_state", "expanded")
     for cat, cfg in CATEGORIES.items():
         st.session_state.setdefault(k(cat, "vault"), list(cfg["vault"]))
         st.session_state.setdefault(k(cat, "intake"), None)

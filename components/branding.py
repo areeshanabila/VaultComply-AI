@@ -1,31 +1,28 @@
 """
-Chrome — section 6 (part 2) of the original app.py.
-
-The logo mark, the trust-badge bar and the two persistent frames (top header
-and sidebar navigation) that wrap every view.
+Chrome — persistent frames (top header and sidebar navigation).
 """
 
 from __future__ import annotations
 
 import datetime as dt
-
 import streamlit as st
+import streamlit.components.v1 as components
 
 from core.config import (
-    ACCENT,
     APP_SUBTITLE,
-    BUILD,
     CURRENT_USER,
-    MUTED,
     NAV_ITEMS,
+    ACCENT,
+    MUTED,
     SUCCESS,
+    BUILD,
     TENANT_ID,
 )
+
 from core.state import goto
 
-
 LOGO_SVG = """
-<svg width="46" height="46" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="42" height="42" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="vcShield" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#38BDF8"/>
@@ -39,32 +36,50 @@ LOGO_SVG = """
 </svg>
 """
 
-
 TRUST_BADGES = [
     "✔ Zero Data Retention (ZDR) Active",
     "✔ Single-Tenant Isolated Namespace",
-    "✔ Malaysia PDPA&nbsp;&amp;&nbsp;Cyber Security Act 2024 Aligned",
-    "✔ ePerolehan&nbsp;&amp;&nbsp;Treasury Benchmark Ready",
+    "✔ Malaysia PDPA & Cyber Security Act 2024 Aligned",
+    "✔ ePerolehan & Treasury Benchmark Ready",
 ]
 
 
 def render_topbar() -> None:
-    badges = "".join(f'<span class="vc-badge">{b}</span>' for b in TRUST_BADGES)
+    badges_html = "".join(f'<span class="vc-badge">{b}</span>' for b in TRUST_BADGES)
+    now_str = dt.datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    # JavaScript that clicks the native Streamlit sidebar toggle
+    click_js = (
+        "(function() {"
+        "  const doc = window.parent.document;"
+        "  const btn = doc.querySelector('button[data-testid=\"baseButton-headerNoPadding\"]')"
+        "           || doc.querySelector('[data-testid=\"stSidebarCollapseButton\"] button')"
+        "           || doc.querySelector('[data-testid=\"collapsedControl\"]')"
+        "           || doc.querySelector('[data-testid=\"stSidebarCollapseButton\"]')"
+        "           || doc.querySelector('header button');"
+        "  if (btn) btn.click();"
+        "})()"
+    )
+
     st.markdown(
         f"""
         <div class="vc-topbar">
-          <div style="display:flex;align-items:center;gap:15px;flex-wrap:wrap;">
-            <div style="flex:0 0 46px;">{LOGO_SVG}</div>
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+            <!-- Trigger button built into the topbar -->
+            <button id="vc-sidebar-trigger" class="vc-toggle-btn" title="Toggle Navigation Sidebar" onclick='{click_js}'>
+              ☰
+            </button>
+            <div style="flex:0 0 42px;">{LOGO_SVG}</div>
             <div style="flex:1 1 320px;">
               <p class="vc-title">VaultComply <span>AI</span></p>
               <p class="vc-sub">{APP_SUBTITLE}</p>
             </div>
             <div style="text-align:right;">
               <span class="vc-badge vc-badge-user">User: {CURRENT_USER}</span>
-              <div class="vc-mono" style="margin-top:5px;">Session {dt.datetime.now():%Y-%m-%d %H:%M} MYT</div>
+              <div class="vc-mono" style="margin-top:4px;">Session {now_str} MYT</div>
             </div>
           </div>
-          <div style="margin-top:10px;">{badges}</div>
+          <div style="margin-top:8px;">{badges_html}</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -75,12 +90,12 @@ def render_sidebar() -> None:
     with st.sidebar:
         st.markdown(
             f"""
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
-              <div style="flex:0 0 34px;">{LOGO_SVG.replace('width="46" height="46"', 'width="34" height="34"')}</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+              <div style="flex:0 0 34px;">{LOGO_SVG.replace('width="42" height="42"', 'width="34" height="34"')}</div>
               <div>
                 <div style="font-size:1.02rem;font-weight:700;color:#F8FAFC;line-height:1.1;">
-                  VaultComply <span style="color:#06B6D4;">AI</span></div>
-                <div style="font-size:0.66rem;color:#94A3B8;">Compliance Document Engine</div>
+                  VaultComply <span style="color:{ACCENT};">AI</span></div>
+                <div style="font-size:0.66rem;color:{MUTED};">Compliance Document Engine</div>
               </div>
             </div>
             <hr class="vc-divider"/>
@@ -90,15 +105,19 @@ def render_sidebar() -> None:
         )
 
         for label, icon in NAV_ITEMS:
-            active = st.session_state.page == label
+            active = st.session_state.get("page") == label
             if st.button(
                 f"{icon}  {label}",
                 key=f"nav_{label}",
-                width="stretch",
+                use_container_width=True,
                 type="primary" if active else "secondary",
             ):
                 if not active:
                     goto(label)
+
+        region_str = st.session_state.get("region", "ap-southeast-1 (Malaysia)").split(",")[0]
+        zdr_val = "Enforced" if st.session_state.get("zdr", True) else "Disabled"
+        audit_val = "Immutable" if st.session_state.get("audit_log", True) else "Off"
 
         st.markdown('<hr class="vc-divider"/>', unsafe_allow_html=True)
         st.markdown('<div class="vc-sec-label">Tenancy Status</div>', unsafe_allow_html=True)
@@ -106,12 +125,12 @@ def render_sidebar() -> None:
             f"""
             <div style="font-size:0.72rem;line-height:1.9;">
               <div><span style="color:{SUCCESS};">●</span> ZDR&nbsp;&nbsp;<span style="color:{MUTED};">
-                {"Enforced" if st.session_state.zdr else "Disabled"}</span></div>
+                {zdr_val}</span></div>
               <div><span style="color:{SUCCESS};">●</span> Namespace&nbsp;&nbsp;<span style="color:{MUTED};">Isolated VPC</span></div>
               <div><span style="color:{SUCCESS};">●</span> Residency&nbsp;&nbsp;<span style="color:{MUTED};">
-                {st.session_state.region.split(',')[0]}</span></div>
+                {region_str}</span></div>
               <div><span style="color:{ACCENT};">●</span> Audit Log&nbsp;&nbsp;<span style="color:{MUTED};">
-                {"Immutable" if st.session_state.audit_log else "Off"}</span></div>
+                {audit_val}</span></div>
             </div>
             <hr class="vc-divider"/>
             <div class="vc-mono" style="line-height:1.7;">
