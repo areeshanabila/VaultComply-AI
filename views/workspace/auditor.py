@@ -14,10 +14,50 @@ import streamlit as st
 
 from components.widgets import gauge
 from core.config import ACCENT, CURRENT_USER, DANGER, MUTED, SUCCESS
-from core.state import k
+from core.state import audit_revealed, k
 
 
 def render(cat: str, cfg: dict) -> None:
+    """Idle placeholder until an audit action has run, full panel afterwards.
+
+    Scoring a document the user has neither analysed nor drafted would be
+    asserting a finding out of thin air, so the gauge, the disqualification
+    alert and the statutory checklist are all held back until
+    :func:`core.state.audit_revealed` says there is something to report.
+
+    The idle card keeps the same column width as the full panel, so the
+    three-column layout metrics do not shift when it swaps over.
+    """
+    if not audit_revealed(cat):
+        _render_idle(cfg)
+        return
+
+    _render_results(cat, cfg)
+
+
+def _render_idle(cfg: dict) -> None:
+    st.markdown('<div class="vc-sec-label">⚖️ Compliance Gap Auditor</div>',
+                unsafe_allow_html=True)
+    st.markdown(
+        f"""
+        <div class="vc-card vc-auditor-idle">
+          <div class="ring">⏳</div>
+          <h4>Awaiting analysis</h4>
+          <p>No audit has run for this document yet.</p>
+          <p style="margin-top:10px;">Run <b>Compliance Gap Analysis</b> to benchmark the
+          active intake, or <b>Generate Compliant Draft</b> to produce a grounded clause —
+          either one scores this document and fills this panel.</p>
+          <div class="basis">
+            <div class="vc-mono">AUDIT BASIS ON STANDBY</div>
+            {cfg['audit_basis']}
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _render_results(cat: str, cfg: dict) -> None:
     approved = st.session_state[k(cat, "approved")]
     score = 100 if approved else 67
     color = SUCCESS if approved else DANGER

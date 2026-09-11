@@ -49,7 +49,7 @@ vaultcomply-ai/
 │   └── exporters.py            # build_docx / build_pdf / build_bundle
 ├── components/                 # reusable presentation
 │   ├── widgets.py              # card, kpi, gauge, file_row  -> HTML strings
-│   └── branding.py             # logo, trust badges, topbar, sidebar
+│   └── branding.py             # logo, masthead, sticky nav bar, sidebar
 └── views/                      # one module per route, each exposes render()
     ├── home.py
     ├── settings.py
@@ -76,7 +76,7 @@ vaultcomply-ai/
 | 4. Domain data — `NAV_ITEMS` | 695–702 | `core/config.py` (it's routing, not content) |
 | 5. Session state — `k`, `init_state`, `goto` | 709–732 | `core/state.py` |
 | 6. Components — `card`, `kpi`, `gauge`, `file_row` | 836–878 | `components/widgets.py` |
-| 6. Components — `LOGO_SVG`, `TRUST_BADGES`, `render_topbar`, `render_sidebar` | 739–833 | `components/branding.py` |
+| 6. Components — `LOGO_SVG`, `TRUST_BADGES`, `render_topbar`, `render_sidebar` | 739–833 | `components/branding.py` (`TRUST_BADGES` now render in the new `render_navbar`) |
 | 7. View 1 — `view_home` | 885–1012 | `views/home.py` → `render()` |
 | 8. `render_vault_column` | 1019–1061 | `views/workspace/vault.py` → `render()` |
 | 8. `render_draft_canvas` | 1064–1141 | `views/workspace/studio.py` → `_draft_canvas()` |
@@ -110,7 +110,9 @@ main.py
 **Adding a new page** takes three steps:
 
 1. Create `views/my_page.py` with a `render()` function.
-2. Add `("My Page", "🔧")` to `NAV_ITEMS` in `core/config.py` — the sidebar picks it up.
+2. Add `("My Page", "🔧")` to `NAV_ITEMS` in `core/config.py` — both the sidebar *and* the
+   horizontal tab strip read that list, so one edit updates both. Add a short label to
+   `NAV_SHORT` in the same file so the tab fits.
 3. Add `"My Page": my_page.render` to `ROUTES` in `main.py`.
 
 **Adding a document category** takes one: add an entry to `CATEGORIES` in `core/data.py`, then
@@ -122,7 +124,38 @@ CSS custom property (`var(--vc-accent)`) *and* to the Python f-strings that buil
 so the two can't drift. Editing `assets/styles.css` alone is fine too — it's re-read whenever its
 modification time changes, no restart needed.
 
-### Two things worth knowing
+### Navigation and the pinned bar
+
+There are two ways to move around and they cannot disagree, because both write to the same
+`st.session_state["page"]`:
+
+- **Sidebar** (`render_sidebar`) — full route labels, vertical.
+- **Horizontal tabs** (`render_navbar`) — condensed labels from `NAV_SHORT`, with the full
+  label on hover.
+
+`render_navbar` also carries the four compliance declarations, and the whole strip is pinned
+to the top of the viewport on every route. The mechanics:
+
+```python
+with st.container(key="vc-stickybar"):   # Streamlit emits class="st-key-vc-stickybar"
+    ...badges + tabs...
+```
+
+```css
+[data-testid="stLayoutWrapper"]:has(> .st-key-vc-stickybar) { position: sticky; top: 0; }
+```
+
+The sticky rule targets the *wrapper*, not the container itself. Streamlit puts a keyed
+container inside a short flex wrapper, and a sticky element can only travel within its
+parent's box — sticking the inner div pins it for about 100px and then lets it scroll away.
+The wrapper is a direct child of the tall main block, which is what gives it the full page to
+travel. Below 900px viewport width the rule reverts to `position: static` so the strip doesn't
+eat a phone screen.
+
+The masthead (logo, subtitle, signed-in user) is deliberately *not* pinned — it scrolls away
+and gives the content its height back.
+
+### Two more things worth knowing
 
 - **The views folder is `views/`, not `pages/`.** A folder named `pages/` next to the entrypoint
   activates Streamlit's built-in multipage mode, which would render its own file-based navigation

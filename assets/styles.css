@@ -14,6 +14,14 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
+/* Height of the fixed topbar. Everything below the header keys off this one
+   value: the sidebar's top offset and height, and the main content's top
+   padding. The default here is a sensible fallback -- the real height is
+   measured at runtime and written back to this property by _SIDEBAR_TOGGLE_JS
+   in components/branding.py, so wrapping badges at narrow widths can never
+   leave the sidebar tucked under the header. */
+:root { --vc-topbar-h: 116px; }
+
 html, body, [class*="css"], .stApp { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
 .stApp { background-color: var(--vc-bg); color: var(--vc-text); }
 
@@ -22,49 +30,41 @@ html, body, [class*="css"], .stApp { font-family: 'Inter', -apple-system, BlinkM
     display: none !important;
 }
 
-/* Let the native header float above the topbar without capturing phantom clicks */
+/* The native header is decorative here; keep it out of the way of the topbar. */
 header[data-testid="stHeader"] {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    height: 3.5rem !important;
-    width: auto !important;
     background: transparent !important;
-    z-index: 2000000 !important;
-    pointer-events: none !important;
+    height: 0 !important;
 }
 
-/* Ensure native sidebar toggle/expand control remains visible and clickable */
-header[data-testid="stHeader"] button,
+/* Streamlit's own sidebar controls are hidden, NOT removed: the topbar's ☰
+   drives them programmatically (see _SIDEBAR_TOGGLE_JS in branding.py), and a
+   .click() still fires on a visually hidden element. Hiding them rather than
+   restyling them is what stops two hamburgers appearing at once.
+   Do not switch these to display:none -- Streamlit needs them mounted. */
 [data-testid="stSidebarCollapseButton"],
-[data-testid="collapsedControl"],
+[data-testid="stExpandSidebarButton"],
 [data-testid="stSidebarCollapsedControl"],
-button[data-testid="baseButton-headerNoPadding"] {
-    pointer-events: auto !important;
-    position: fixed !important;
-    top: 12px !important;
-    left: 14px !important;
-    z-index: 2000001 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    background-color: var(--vc-surface) !important;
-    border: 1px solid var(--vc-border) !important;
-    border-radius: 8px !important;
-    width: 36px !important;
-    height: 36px !important;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45) !important;
-    cursor: pointer !important;
+[data-testid="collapsedControl"] {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
 }
 
-header[data-testid="stHeader"] button svg,
-[data-testid="stSidebarCollapseButton"] svg,
-[data-testid="collapsedControl"] svg,
-[data-testid="stSidebarCollapsedControl"] svg,
-button[data-testid="baseButton-headerNoPadding"] svg {
-    color: var(--vc-accent) !important;
-    fill: var(--vc-accent) !important;
-    stroke: var(--vc-accent) !important;
+/* The zero-height iframe that carries the toggle script. Taken out of the
+   layout flow so it adds no gap; position:absolute keeps scripts running,
+   which display:none would risk. */
+[data-testid="stElementContainer"]:has(> iframe[title="st.iframe"]),
+[data-testid="stElementContainer"]:has(> iframe[title="streamlit.components.v1.html"]),
+[data-testid="element-container"]:has(> iframe[title="st.iframe"]),
+[data-testid="element-container"]:has(> iframe[title="streamlit.components.v1.html"]) {
+    position: absolute !important;
+    width: 0 !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
 }
 
 /* ── Custom Built-in Sidebar Trigger Button ──────────────── */
@@ -89,20 +89,62 @@ button[data-testid="baseButton-headerNoPadding"] svg {
 }
 
 /* ── Sidebar Canvas ────────────────────────────────────── */
+/* Starts at the header's bottom edge and runs to the bottom of the viewport,
+   so it reads as dropping out from underneath the header rather than
+   competing with it.
+
+   z-index sits BELOW the topbar's 1000000 -- that ordering is the whole fix
+   for the sidebar cutting through the header.
+
+   The sidebar is an in-flow flex child of stAppViewContainer, so margin-top
+   shifts it without taking it out of the flow. That matters: the content
+   squeeze is Streamlit's own behaviour (it collapses the flex item's
+   min/max-width and slides it with translateX), and keeping the sidebar
+   in-flow is what preserves it. align-self stops the flex row stretching it
+   back to full height. */
 section[data-testid="stSidebar"] {
-    z-index: 1000002 !important;
+    z-index: 999000 !important;
+    margin-top: var(--vc-topbar-h) !important;
+    height: calc(100vh - var(--vc-topbar-h)) !important;
+    min-height: calc(100vh - var(--vc-topbar-h)) !important;
+    max-height: calc(100vh - var(--vc-topbar-h)) !important;
+    align-self: flex-start !important;
     background-color: var(--vc-deep) !important;
     border-right: 1px solid var(--vc-border) !important;
 }
-section[data-testid="stSidebar"] .block-container { 
-    padding-top: 1.5rem; 
+
+/* Inner scroll area has to follow the new height or it keeps a 100vh box and
+   the last nav items fall off the bottom of the screen. */
+section[data-testid="stSidebar"] [data-testid="stSidebarContent"] {
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow-y: auto !important;
 }
 
-/* Content spacing below the fixed topbar */
-.main .block-container { 
-    padding-top: 7.2rem !important; 
-    padding-bottom: 3rem; 
-    max-width: 1500px; 
+/* Streamlit reserves a 60px header strip at the top of the sidebar for its
+   collapse button. That button is hidden (the topbar's ☰ drives it), so the
+   strip is now dead space that pushed the nav down below the header seam. */
+section[data-testid="stSidebar"] [data-testid="stSidebarHeader"] {
+    height: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+}
+
+section[data-testid="stSidebar"] .block-container,
+section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {
+    padding-top: 1.5rem;
+}
+
+/* Content spacing below the fixed topbar.
+   NOTE: the previous selector here was `.main .block-container`, which never
+   matched anything -- Streamlit's class is `stMainBlockContainer`, and the
+   section above it is `.stMain`, not `.main`. The page only cleared the header
+   by luck, on the first heading's own margin. */
+[data-testid="stMainBlockContainer"],
+.main .block-container {
+    padding-top: calc(var(--vc-topbar-h) + 1.25rem) !important;
+    padding-bottom: 3rem;
+    max-width: 1500px;
 }
 
 h1, h2, h3, h4, h5, h6 { color: var(--vc-text) !important; letter-spacing: -0.02em; }
@@ -200,27 +242,24 @@ p, span, label, li { color: var(--vc-text); }
     top: 0;
     left: 0;
     right: 0;
-    z-index: 1000000;
+    width: 100vw;
+    z-index: 1000000;   /* above the sidebar's 999000 -- keep it that way */
     background: linear-gradient(135deg, var(--vc-topbar-from) 0%, var(--vc-bg) 60%);
     border-bottom: 1px solid var(--vc-border);
     border-top: none;
     border-left: none;
     border-right: none;
     border-radius: 0;
-    padding: 12px 2rem 12px 4.5rem;
+    padding: 12px 2rem;
     margin: 0;
     backdrop-filter: blur(12px);
-    transition: left 0.2s ease, width 0.2s ease, padding-left 0.2s ease;
 }
 
-/* When the sidebar is expanded on desktop */
-@media (min-width: 768px) {
-    section[data-testid="stSidebar"][aria-expanded="true"] ~ div .vc-topbar {
-        left: 18rem;
-        width: calc(100vw - 18rem);
-        padding-left: 2rem;
-    }
-}
+/* The topbar no longer shifts with the sidebar -- it spans the full viewport
+   at all times and the sidebar passes underneath it. The old
+   `[aria-expanded="true"] ~ div .vc-topbar { left: 18.75rem }` rule that
+   offset it has been removed; re-adding it would reintroduce the 12px seam
+   and make the header width jump on every toggle. */
 
 .vc-title { font-size: 1.5rem; font-weight: 700; color: var(--vc-text); line-height: 1.15; margin: 0; }
 .vc-title span { color: var(--vc-accent); }
@@ -283,22 +322,133 @@ p, span, label, li { color: var(--vc-text); }
                overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vc-file .st { font-size: 0.66rem; margin-left: auto; white-space: nowrap; }
 
-.vc-paper {
-    background-color: var(--vc-text);
-    color: var(--vc-bg);
-    border-radius: 6px;
-    padding: 26px 30px;
-    font-family: 'Times New Roman', Georgia, serif;
-    line-height: 1.65;
-    box-shadow: 0 8px 26px rgba(0,0,0,0.45);
+/* ── Draft canvas: one continuous A4 sheet ──────────────────────────────────
+   The keyed container from views/workspace/studio.py (st.container(key=
+   "vc-a4-sheet")) IS the sheet of paper. Its children -- letterhead markdown,
+   the st.text_area, the table markdown -- are plain content on that page, not
+   cards of their own. That is the whole trick: Streamlit cannot nest a widget
+   inside a markdown block, but it can put both inside one styled container.
+
+   min-height is refined to a true A4 ratio (1 : 1.414) from the sheet's live
+   width by the script in components/branding.py; the value here is the
+   fallback before that runs. */
+.st-key-vc-a4-sheet {
+    background: #FFFFFF;
+    color: #1E293B;
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 2.4rem 2.5rem 2.6rem 2.5rem;   /* ~25mm print margins */
+    border: 1px solid #E2E8F0;
+    border-radius: 3px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.38);
+    min-height: 720px;
+    gap: 0 !important;                      /* no flex gaps between page parts */
 }
-.vc-paper h3 { color: var(--vc-bg) !important; font-size: 1.02rem; margin: 0 0 4px 0; }
-.vc-paper p, .vc-paper li, .vc-paper td, .vc-paper th { color: #1e293b !important; font-size: 0.84rem; }
-.vc-paper table { width: 100%; border-collapse: collapse; margin: 12px 0; font-family: 'Inter', sans-serif; }
-.vc-paper th { background-color: var(--vc-bg); color: var(--vc-text) !important; font-size: 0.72rem;
-               text-align: left; padding: 8px 10px; }
-.vc-paper td { border: 1px solid #cbd5e1; padding: 7px 10px; font-size: 0.76rem; }
-.vc-paper .meta { color: #64748b !important; font-size: 0.70rem; font-family: 'Inter', sans-serif; }
+
+/* Streamlit wraps each child in its own element container; those carry margins
+   that would show up as seams across the page. */
+.st-key-vc-a4-sheet [data-testid="stElementContainer"],
+.st-key-vc-a4-sheet [data-testid="stMarkdownContainer"],
+.st-key-vc-a4-sheet [data-testid="stVerticalBlock"] {
+    background: transparent !important;
+    gap: 0 !important;
+}
+
+/* ── Page content ───────────────────────────────────────── */
+.st-key-vc-a4-sheet .vc-doc-head {
+    border-bottom: 2px solid #0F172A;
+    padding-bottom: 10px;
+    margin-bottom: 18px;
+}
+.st-key-vc-a4-sheet .vc-doc-head .title {
+    font-family: 'Times New Roman', Georgia, serif;
+    font-size: 1.12rem;
+    font-weight: 700;
+    color: #0F172A;
+    line-height: 1.3;
+    margin-bottom: 5px;
+}
+.st-key-vc-a4-sheet .vc-doc-head .meta,
+.st-key-vc-a4-sheet .vc-doc-table .note {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.70rem;
+    color: #64748B;
+    line-height: 1.6;
+}
+
+.st-key-vc-a4-sheet .vc-doc-table { margin-top: 20px; }
+.st-key-vc-a4-sheet .vc-doc-table .cap {
+    font-family: 'Times New Roman', Georgia, serif;
+    font-weight: 700;
+    font-size: 0.88rem;
+    color: #0F172A;
+    margin-bottom: 6px;
+}
+.st-key-vc-a4-sheet .vc-doc-table table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0 10px 0;
+    font-family: 'Inter', sans-serif;
+}
+.st-key-vc-a4-sheet .vc-doc-table th {
+    background-color: #0F172A;
+    color: #F8FAFC !important;
+    font-size: 0.70rem;
+    text-align: left;
+    padding: 8px 10px;
+}
+.st-key-vc-a4-sheet .vc-doc-table td {
+    border: 1px solid #CBD5E1;
+    color: #1E293B !important;
+    padding: 7px 10px;
+    font-size: 0.75rem;
+}
+
+/* ── The editable body, blended into the page ───────────── */
+/* Every wrapper baseweb puts around the textarea has to lose its dark skin,
+   or a grey box shows through the paper. */
+.st-key-vc-a4-sheet .stTextArea,
+.st-key-vc-a4-sheet .stTextArea > div,
+.st-key-vc-a4-sheet [data-baseweb="textarea"],
+.st-key-vc-a4-sheet [data-baseweb="base-input"] {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    height: auto !important;
+}
+
+.st-key-vc-a4-sheet .stTextArea textarea {
+    background: #FFFFFF !important;
+    color: #1E293B !important;
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    font-family: 'Times New Roman', Georgia, serif !important;
+    font-size: 0.95rem !important;
+    line-height: 1.78 !important;
+    resize: none;                  /* auto-grow sizes it; a drag handle on
+                                      the page would give the field away */
+    overflow-y: hidden;            /* auto-grow means no inner scrollbar */
+    -webkit-text-fill-color: #1E293B;
+}
+.st-key-vc-a4-sheet .stTextArea textarea:focus {
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+/* A faint caret-side rule is the only affordance that this text is editable --
+   enough to hint at it without putting a form field on the page. */
+.st-key-vc-a4-sheet .stTextArea textarea:focus-visible {
+    background: #FFFFFF !important;
+}
+.st-key-vc-a4-sheet .stTextArea::after {
+    content: "";
+    display: block;
+    border-bottom: 1px dashed #E2E8F0;
+    margin-top: 14px;
+}
 
 .vc-cite {
     display: inline-block;
@@ -360,3 +510,78 @@ p, span, label, li { color: var(--vc-text); }
 [data-testid="stDataFrame"] { border: 1px solid var(--vc-border); border-radius: 10px; }
 .stProgress > div > div > div > div { background-color: var(--vc-accent); }
 hr { border-color: var(--vc-border); }
+/* ── Sidebar: Document Generation group ─────────────────── */
+/* The group header reads as a category, not a peer of the routes below it:
+   flat, letterspaced, with the caret pushed out to the right edge. */
+.st-key-vc-nav-group-head .stButton button {
+    background-color: transparent !important;
+    border: 1px solid transparent !important;
+    border-bottom: 1px solid var(--vc-border-soft) !important;
+    border-radius: 0 !important;
+    color: var(--vc-muted) !important;
+    font-size: 0.74rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.06em !important;
+    text-transform: uppercase !important;
+    padding: 0.4rem 0.2rem !important;
+}
+.st-key-vc-nav-group-head .stButton button:hover {
+    color: var(--vc-accent) !important;
+    border-bottom-color: var(--vc-accent) !important;
+    background-color: transparent !important;
+}
+/* Closed + a workspace is live: the header carries the highlight instead,
+   since the active child is not on screen to carry it. */
+.st-key-vc-nav-group-head .stButton button[kind="primary"] {
+    background-color: transparent !important;
+    color: var(--vc-accent) !important;
+    border-bottom: 2px solid var(--vc-accent) !important;
+}
+
+/* Children indent under the header and carry a rail down the left so the
+   grouping is legible at a glance. */
+.st-key-vc-nav-group-items {
+    padding-left: 12px;
+    margin: 6px 0 10px 4px;
+    border-left: 1px solid var(--vc-border);
+}
+.st-key-vc-nav-group-items .stButton button {
+    font-size: 0.80rem !important;
+    justify-content: flex-start !important;
+}
+
+/* ── Auditor idle placeholder ───────────────────────────── */
+/* Shown before any audit action has run. Dashed to read as "not yet filled",
+   matching the empty-draft card in the studio column. */
+.vc-auditor-idle {
+    border-style: dashed !important;
+    text-align: center;
+    padding: 26px 18px !important;
+}
+.vc-auditor-idle .ring {
+    width: 62px;
+    height: 62px;
+    margin: 0 auto 12px auto;
+    border-radius: 50%;
+    border: 2px dashed var(--vc-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    opacity: 0.75;
+}
+.vc-auditor-idle h4 {
+    color: var(--vc-muted) !important;
+    font-size: 0.88rem !important;
+    margin-bottom: 8px !important;
+}
+.vc-auditor-idle p { font-size: 0.75rem !important; line-height: 1.6; }
+.vc-auditor-idle .basis {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--vc-border-soft);
+    font-size: 0.68rem;
+    color: var(--vc-muted);
+    line-height: 1.5;
+}
+.vc-auditor-idle .basis .vc-mono { margin-bottom: 4px; letter-spacing: 0.08em; }

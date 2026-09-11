@@ -12,6 +12,7 @@ internal to this column.
 from __future__ import annotations
 
 import datetime as dt
+import math
 import time
 
 import pandas as pd
@@ -193,48 +194,75 @@ def render(cat: str, cfg: dict) -> None:
             )
 
 
+def _body_height(text: str) -> int:
+    """Tall enough that the draft never scrolls inside its own box.
+
+    A textarea with an inner scrollbar breaks the page illusion immediately, so
+    the height is sized to the wrapped content instead of being fixed. The
+    browser-side auto-grow in components/branding.py refines this live as the
+    user types; this is the value the page renders with.
+    """
+    chars_per_line = 62
+    rows = sum(
+        max(1, math.ceil(len(line) / chars_per_line)) if line.strip() else 1
+        for line in text.split("\n")
+    )
+    return int(min(2600, max(340, rows * 27 + 32)))
+
+
 def _draft_canvas(cat: str, cfg: dict) -> None:
     src_file, src_page = cfg["citation"]
 
     st.markdown('<div class="vc-sec-label">Editable Draft Canvas — Word-Style Document</div>',
                 unsafe_allow_html=True)
 
-    header_html = f"""
-    <div class="vc-paper">
-      <div style="border-bottom:2px solid #0F172A;padding-bottom:8px;margin-bottom:12px;">
-        <h3>{cfg['doc_title']}</h3>
-        <div class="meta">Document Ref: {cfg['doc_ref']} &nbsp;·&nbsp; Classification: Confidential
-        &nbsp;·&nbsp; Generated: {dt.datetime.now():%d %B %Y} &nbsp;·&nbsp; Author: VaultComply AI
-        (grounded generation)</div>
-      </div>
-    </div>"""
-    st.markdown(header_html, unsafe_allow_html=True)
-
-    st.session_state[k(cat, "draft")] = st.text_area(
-        "Draft body (editable)",
-        value=st.session_state[k(cat, "draft")],
-        height=330,
-        key=k(cat, "draft_area"),
-        label_visibility="collapsed",
-    )
-
     rows_html = "".join(
         "<tr>" + "".join(f"<td>{c}</td>" for c in row) + "</tr>" for row in SLA_ROWS
     )
     heads_html = "".join(f"<th>{h}</th>" for h in SLA_HEADERS)
-    st.markdown(
-        f"""
-        <div class="vc-paper">
-          <div style="font-weight:700;font-size:0.82rem;margin-bottom:2px;">
-            Table 4.2.3 — Recovery Objectives by Service Criticality Tier</div>
-          <table><thead><tr>{heads_html}</tr></thead><tbody>{rows_html}</tbody></table>
-          <div class="meta">Objectives measured on a rolling calendar-month basis and subject to
-          the liquidated damages regime in Section 9.4. Availability excludes pre-notified
-          maintenance windows agreed in writing with the Client.</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+
+    # One keyed container = one sheet of paper. Streamlit emits it as
+    # .st-key-vc-a4-sheet, and styles.css paints THAT as the A4 page: white
+    # ground, print margins, page shadow. The letterhead, the editable body and
+    # the table are then plain children of the page rather than three separate
+    # cards, which is what makes the document read as continuous.
+    with st.container(key="vc-a4-sheet"):
+        st.markdown(
+            f"""
+            <div class="vc-doc-head">
+              <div class="title">{cfg['doc_title']}</div>
+              <div class="meta">Document Ref: {cfg['doc_ref']} &nbsp;·&nbsp;
+              Classification: Confidential &nbsp;·&nbsp;
+              Generated: {dt.datetime.now():%d %B %Y} &nbsp;·&nbsp;
+              Author: VaultComply AI (grounded generation)</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Same widget key and same destination key as before, so generation,
+        # persistence and the .docx / .pdf / .zip exports all read exactly what
+        # they read previously -- only the skin around this changed.
+        st.session_state[k(cat, "draft")] = st.text_area(
+            "Draft body (editable)",
+            value=st.session_state[k(cat, "draft")],
+            height=_body_height(st.session_state[k(cat, "draft")]),
+            key=k(cat, "draft_area"),
+            label_visibility="collapsed",
+        )
+
+        st.markdown(
+            f"""
+            <div class="vc-doc-table">
+              <div class="cap">Table 4.2.3 — Recovery Objectives by Service Criticality Tier</div>
+              <table><thead><tr>{heads_html}</tr></thead><tbody>{rows_html}</tbody></table>
+              <div class="note">Objectives measured on a rolling calendar-month basis and subject
+              to the liquidated damages regime in Section 9.4. Availability excludes pre-notified
+              maintenance windows agreed in writing with the Client.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     st.markdown(
         f'<div style="margin:12px 0 6px 0;">'

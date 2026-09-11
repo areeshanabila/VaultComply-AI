@@ -21,6 +21,7 @@ def k(cat: str, name: str) -> str:
 def init_state() -> None:
     st.session_state.setdefault("page", DEFAULT_PAGE)
     st.session_state.setdefault("sidebar_state", "expanded")
+    st.session_state.setdefault("nav_docgen_open", True)
     for cat, cfg in CATEGORIES.items():
         st.session_state.setdefault(k(cat, "vault"), list(cfg["vault"]))
         st.session_state.setdefault(k(cat, "intake"), None)
@@ -34,6 +35,28 @@ def init_state() -> None:
     st.session_state.setdefault("region", "Cyberjaya, Malaysia (MY-Central-1)")
     st.session_state.setdefault("pii_redaction", True)
     st.session_state.setdefault("model_training_optout", True)
+
+
+def audit_revealed(cat: str) -> bool:
+    """Has the user done anything in this workspace worth auditing yet?
+
+    The compliance gap auditor stays in an idle placeholder until one of the
+    two explicit actions has run:
+
+        "Run Compliance Gap Analysis"  -> sets <cat>__analysed
+        "Generate Compliant Draft"     -> sets <cat>__generated
+
+    Both flags already exist, already live in session_state, and are already
+    namespaced per document category by :func:`k`, so this derives from them
+    rather than adding a third flag that could drift out of sync with them.
+
+    A consequence worth knowing: discarding a draft that was never analysed
+    returns the panel to idle, because at that point there is genuinely nothing
+    to report. Running the analysis is sticky — <cat>__analysed is never reset.
+    """
+    return bool(
+        st.session_state.get(k(cat, "analysed")) or st.session_state.get(k(cat, "generated"))
+    )
 
 
 def goto(page: str) -> None:

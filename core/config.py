@@ -97,6 +97,39 @@ NAV_ITEMS = [
     ("User Access (RBAC)", "👥"),
 ]
 
+#: Condensed labels for the horizontal top-nav strip, where six tabs share the
+#: content width. Keys must match NAV_ITEMS labels exactly; the sidebar keeps
+#: the full labels.
+NAV_SHORT: dict[str, str] = {
+    "Home & Trust Center": "Trust Center",
+    "Proposal Generation": "Proposal",
+    "Tender Generation": "Tender",
+    "Report Generation": "Report",
+    "Settings & Security": "Settings",
+    "User Access (RBAC)": "Access (RBAC)",
+}
+
+#: The three generation workspaces, collapsed under one sidebar group.
+#: (route label, icon, label shown inside the group).
+DOC_GEN_LABEL = "Document Generation"
+DOC_GEN_ICON = "🗂️"
+DOC_GEN_ITEMS: list[tuple[str, str, str]] = [
+    ("Proposal Generation", "📝", "Proposal"),
+    ("Tender Generation", "📋", "Tender"),
+    ("Report Generation", "📊", "Report"),
+]
+
+#: Sidebar rendering order, declarative so the shape of the menu lives here
+#: rather than inside render_sidebar. "item" is a plain route button; "group"
+#: is the expandable Document Generation block built from DOC_GEN_ITEMS.
+#: NAV_ITEMS above stays the flat, canonical list of every route.
+SIDEBAR_NAV: list[tuple[str, str, str]] = [
+    ("item", "Home & Trust Center", "🏛️"),
+    ("group", DOC_GEN_LABEL, DOC_GEN_ICON),
+    ("item", "Settings & Security", "⚙️"),
+    ("item", "User Access (RBAC)", "👥"),
+]
+
 #: Landing page, and the fallback for an unknown route.
 DEFAULT_PAGE = NAV_ITEMS[0][0]
 
