@@ -71,8 +71,8 @@ def render_footer() -> None:
                     font-size:0.68rem;color:{config.MUTED};padding-bottom:10px;">
           <div>{config.APP_NAME} · Build {config.BUILD} Enterprise ·
                Tenant {config.TENANT_ID}</div>
-          <div>Zero Data Retention enforced · Single-tenant isolated namespace ·
-               Data residency: {st.session_state.region}</div>
+          <div>Local prototype · Ollama/local fallbacks · Grounded citations ·
+               Environment: {st.session_state.region}</div>
           <div>© 2026 VaultComply Sdn. Bhd.</div>
         </div>
         """,

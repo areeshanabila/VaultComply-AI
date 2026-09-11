@@ -1,211 +1,272 @@
-# VaultComply AI
+# VaultComply AI — Local Ollama + RAG Prototype
 
-**AI-Powered Business & Compliance Document Engine** — an interactive Streamlit prototype
-demonstrating grounded document generation, statutory gap auditing and human-in-the-loop
-sign-off for Malaysian procurement workflows (MOF / ePerolehan / PDPA / Cyber Security Act 2024).
+VaultComply AI is a local-first Streamlit prototype for **grounded business-document drafting and compliance auditing**.
 
-> Prototype / demonstrator. All vault contents, scores, users and provenance snippets are
-> illustrative mock data. No external AI service is called.
+
+- real PDF / DOCX / TXT / MD / CSV / XLSX parsing
+- page-aware document chunking
+- optional Ollama embeddings for Semantic Vault retrieval
+- lexical retrieval fallback when embeddings are unavailable
+- RFP/checklist requirement extraction with Ollama JSON output
+- deterministic requirement-extraction fallback
+- grounded drafting with local Ollama
+- deterministic grounded drafting fallback if the chat model is unavailable
+- citations taken from the retrieved file/page/chunk metadata — not invented by the model
+- compliance results calculated from actual extracted requirements
+- optional Ollama semantic verification for ambiguous requirements
+- human approval separated from compliance scoring
+- DOCX / PDF / ZIP exports from the reviewed draft
+
+> This is a prototype. It demonstrates local processing and workflow controls; it does not itself prove production VPC isolation, KMS custody, external certifications, or independently attested Zero Data Retention.
 
 ---
 
-## Quick start (macOS, Apple Silicon M1, Python 3.13)
+## 1. Requirements
 
-```bash
-git clone <your-repo-url> vaultcomply-ai
-cd vaultcomply-ai
+- Python 3.11+
+- Ollama installed locally
 
-python3 -m venv .venv
-source .venv/bin/activate
-pip install --upgrade pip
+Recommended Ollama models:
+
+```powershell
+ollama pull qwen3:1.7b
+ollama pull nomic-embed-text
+```
+
+The default local endpoint is:
+
+```text
+http://127.0.0.1:11434
+```
+
+The application does not require a cloud AI API.
+
+---
+
+## 2. Windows setup
+
+From PowerShell:
+
+```powershell
+cd VaultComply-AI-main
+
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+
+python -m pip install --upgrade pip
 pip install -r requirements.txt
-
-streamlit run main.py          # note: main.py, not app.py
 ```
 
-Opens at <http://localhost:8501>. `Ctrl+C` stops it; `deactivate` leaves the venv.
+Check that Ollama is running and the configured models are available:
 
-In VS Code: `Cmd+Shift+P` → **Python: Select Interpreter** → `./.venv/bin/python`, then run
-the same command in the integrated terminal.
-
----
-
-## Project structure
-
+```powershell
+ollama list
+python ollama_check.py
 ```
-vaultcomply-ai/
-├── main.py                     # entry point: page config, route table, footer
-├── requirements.txt
-├── .streamlit/
-│   └── config.toml             # dark theme + server defaults
-├── assets/
-│   └── styles.css              # the entire stylesheet
-├── core/                       # no Streamlit UI — config, content, state
-│   ├── config.py               # identity, palette, paths, nav map
-│   ├── theme.py                # loads styles.css, injects palette as CSS vars
-│   ├── data.py                 # CATEGORIES, SLA table, clause text
-│   └── state.py                # session state, k(), goto()
-├── services/                   # stateless, testable, no Streamlit
-│   └── exporters.py            # build_docx / build_pdf / build_bundle
-├── components/                 # reusable presentation
-│   ├── widgets.py              # card, kpi, gauge, file_row  -> HTML strings
-│   └── branding.py             # logo, masthead, sticky nav bar, sidebar
-└── views/                      # one module per route, each exposes render()
-    ├── home.py
-    ├── settings.py
-    ├── rbac.py
-    └── workspace/              # shared by Proposal / Tender / Report
-        ├── __init__.py         # 3-column layout, delegates to the columns
-        ├── vault.py            # left   — semantic vault + uploader
-        ├── studio.py           # centre — intake, tabs, canvas, sign-off, export
-        └── auditor.py          # right  — gauge, alerts, statutory checklist
+
+Start VaultComply:
+
+```powershell
+streamlit run main.py
+```
+
+Open:
+
+```text
+http://localhost:8501
 ```
 
 ---
 
-## Where each section of the original `app.py` went
+## 3. Ollama configuration
 
-| Original section | Lines | Now lives in |
-| --- | --- | --- |
-| 1. App config — `st.set_page_config` | 33–38 | `main.py` |
-| 1. App config — identity constants | 29–31 | `core/config.py` |
-| 1. App config — colour palette | 41–49 | `core/config.py` (`BG`…`WARN`, `PALETTE`) |
-| 2. Global CSS injection | 56–312 | `assets/styles.css` (the CSS) + `core/theme.py` (the loader) |
-| 3. Export engine | 319–558 | `services/exporters.py` |
-| 4. Domain data — `SLA_*`, `DR_BODY`, `CATEGORIES`, `PROVENANCE_QUOTE` | 565–693 | `core/data.py` |
-| 4. Domain data — `NAV_ITEMS` | 695–702 | `core/config.py` (it's routing, not content) |
-| 5. Session state — `k`, `init_state`, `goto` | 709–732 | `core/state.py` |
-| 6. Components — `card`, `kpi`, `gauge`, `file_row` | 836–878 | `components/widgets.py` |
-| 6. Components — `LOGO_SVG`, `TRUST_BADGES`, `render_topbar`, `render_sidebar` | 739–833 | `components/branding.py` (`TRUST_BADGES` now render in the new `render_navbar`) |
-| 7. View 1 — `view_home` | 885–1012 | `views/home.py` → `render()` |
-| 8. `render_vault_column` | 1019–1061 | `views/workspace/vault.py` → `render()` |
-| 8. `render_draft_canvas` | 1064–1141 | `views/workspace/studio.py` → `_draft_canvas()` |
-| 8. `render_signoff_and_export` | 1144–1317 | `views/workspace/studio.py` → `_signoff_and_export()` |
-| 8. `render_auditor_column` | 1320–1398 | `views/workspace/auditor.py` → `render()` |
-| 8. `view_workspace` — layout shell | 1401–1417 | `views/workspace/__init__.py` → `render()` |
-| 8. `view_workspace` — centre column body | 1418–1583 | `views/workspace/studio.py` → `render()` |
-| 9. View 5 — `view_settings` | 1594–1703 | `views/settings.py` → `render()` |
-| 10. View 6 — `view_rbac` | 1710–1797 | `views/rbac.py` → `render()` |
-| 11. Router — `main` | 1804–1838 | `main.py` (`ROUTES` dict + `main()`) |
-| 11. Footer markup | 1820–1836 | `main.py` → `render_footer()` |
+Defaults:
 
-Function bodies were moved verbatim. The only renames: each view's public entry point is now
-`render()`, and the two studio helpers are underscore-prefixed to mark them internal.
+```text
+OLLAMA_CHAT_MODEL=qwen3:1.7b
+OLLAMA_EMBED_MODEL=nomic-embed-text
+```
+
+For CPU-only testing, `qwen3:1.7b` is the recommended default in this build.
 
 ---
 
-## How the pieces call each other
+## 4. Real workflow
 
-Dependencies point in one direction only, so no module ever imports one that imports it back:
+### A. Index the Semantic Vault
 
-```
-main.py
-  ├── core.config ─────────────── (imports nothing from the project)
-  ├── core.theme     → core.config
-  ├── core.state     → core.config, core.data
-  ├── components.*   → core.*
-  └── views.*        → components.*, core.*, services.*
-```
+Open Proposal, Tender, or Report Workspace.
 
-**Adding a new page** takes three steps:
+In the left column, upload historical company documents.
 
-1. Create `views/my_page.py` with a `render()` function.
-2. Add `("My Page", "🔧")` to `NAV_ITEMS` in `core/config.py` — both the sidebar *and* the
-   horizontal tab strip read that list, so one edit updates both. Add a short label to
-   `NAV_SHORT` in the same file so the tab fits.
-3. Add `"My Page": my_page.render` to `ROUTES` in `main.py`.
+VaultComply:
 
-**Adding a document category** takes one: add an entry to `CATEGORIES` in `core/data.py`, then
-a route in `WORKSPACE_ROUTES` (`core/config.py`). The whole workspace — vault, studio, auditor,
-exports — is driven off that dictionary, so no view code changes.
+1. parses the file locally
+2. preserves PDF page numbers
+3. chunks the extracted text
+4. hashes each chunk
+5. generates local embeddings if `nomic-embed-text` is available
+6. otherwise keeps a lexical index
 
-**Changing a colour**: edit the constant in `core/config.py`. It flows to the stylesheet as a
-CSS custom property (`var(--vc-accent)`) *and* to the Python f-strings that build inline styles,
-so the two can't drift. Editing `assets/styles.css` alone is fine too — it's re-read whenever its
-modification time changes, no restart needed.
+The filenames that ship with the old prototype remain visible as **reference-only placeholders** until the actual files are uploaded and parsed.
 
-### Navigation and the pinned bar
+### B. Upload the RFP / checklist
 
-There are two ways to move around and they cannot disagree, because both write to the same
-`st.session_state["page"]`:
+In the centre column, upload the client requirements document.
 
-- **Sidebar** (`render_sidebar`) — full route labels, vertical.
-- **Horizontal tabs** (`render_navbar`) — condensed labels from `NAV_SHORT`, with the full
-  label on hover.
+VaultComply attempts:
 
-`render_navbar` also carries the four compliance declarations, and the whole strip is pinned
-to the top of the viewport on every route. The mechanics:
-
-```python
-with st.container(key="vc-stickybar"):   # Streamlit emits class="st-key-vc-stickybar"
-    ...badges + tabs...
+```text
+RFP / checklist
+      ↓
+Ollama structured extraction
+      ↓
+Requirement objects
 ```
 
-```css
-[data-testid="stLayoutWrapper"]:has(> .st-key-vc-stickybar) { position: sticky; top: 0; }
+Every Ollama-extracted requirement must include an exact source quote that exists in the uploaded document. Unsupported model-generated requirements are rejected.
+
+If Ollama is unavailable, explicit `must`, `shall`, `required`, minimum/maximum, and section-presence rules are extracted deterministically.
+
+### C. Verify an existing document
+
+Under **Verify Existing Document**, upload the document you want to audit.
+
+VaultComply runs deterministic checks first:
+
+- required section / concept presence
+- expected concept coverage
+- percentage thresholds
+- week / hour / minute thresholds
+
+For genuinely semantic requirements, you can enable:
+
+```text
+Use Ollama for ambiguous semantic requirements
 ```
 
-The sticky rule targets the *wrapper*, not the container itself. Streamlit puts a keyed
-container inside a short flex wrapper, and a sticky element can only travel within its
-parent's box — sticking the inner div pins it for about 100px and then lets it scroll away.
-The wrapper is a direct child of the tall main block, which is what gives it the full page to
-travel. Below 900px viewport width the rule reverts to `position: static` so the strip doesn't
-eat a phone screen.
+This is optional because CPU inference may be slower.
 
-The masthead (logo, subtitle, signed-in user) is deliberately *not* pinned — it scrolls away
-and gives the content its height back.
+### D. Draft a missing clause from the vault
 
-### Two more things worth knowing
+Under **Draft a Clause**:
 
-- **The views folder is `views/`, not `pages/`.** A folder named `pages/` next to the entrypoint
-  activates Streamlit's built-in multipage mode, which would render its own file-based navigation
-  in the sidebar and fight the custom router.
-- **`st.set_page_config` runs before the view imports in `main.py`.** It has to be the first
-  Streamlit call in the process. Every module defers its `st.*` calls into function bodies, so
-  the imports below it are safe — hence the `# noqa: E402` markers.
+1. choose a failed requirement or type an instruction
+2. retrieve the most relevant local vault chunks
+3. use hybrid embedding + lexical retrieval when embeddings exist
+4. pass only the top grounded passages to Ollama
+5. create a provisional draft
+6. attach the real source filename, page, chunk ID, retrieval score and hash
+
+If no relevant source is found, the system stops with:
+
+```text
+No grounded source found
+```
+
+It does not fabricate a citation.
+
+### E. Human approval and re-audit
+
+Approval means:
+
+> The reviewer accepts the proposed wording.
+
+Approval does **not** mean:
+
+> The document is automatically compliant.
+
+When a revision is approved, VaultComply combines it with the document under test and recalculates the audit deterministically.
+
+### F. Export
+
+- reviewed Word draft: available after human approval
+- audit PDF and submission bundle: available only when all extracted mandatory requirements PASS
 
 ---
 
-## Demo walkthrough
+## 5. Architecture
 
-1. **Home & Trust Center** → security declarations, KPIs, quick-launch into a workspace.
-2. **Tender Generation** → the gap auditor opens at **67% (Action Required)** with a red
-   disqualification alert for the missing Section 4.2 Disaster Recovery SLA.
-3. **Tab A** → *Run Compliance Gap Analysis* for the control-by-control audit breakdown.
-4. **Tab B** → pick a preset prompt, then *Generate Compliant Draft*. An editable Word-style
-   canvas appears with the SLA table, a `[Source: 2024_Master_Tender.pdf: Page 18]` citation tag
-   and an expandable provenance snippet.
-5. **Approve Clause / Sign-Off** → amber *Pending* flips to emerald *Approved*, the gauge moves
-   to **100% Fully Compliant**, and the export suite unlocks.
-6. **Export** → a real `.docx`, a real multi-page `.pdf`, and an ePerolehan `.zip` with a
-   manifest, SHA-256 checksums and a sign-off attestation.
+```text
+Streamlit UI
+    │
+    ├── views/workspace/vault.py
+    │       │
+    │       ├── document_ingestion.py
+    │       └── retrieval.py ─────────────► Ollama embeddings (optional)
+    │
+    ├── views/workspace/studio.py
+    │       │
+    │       ├── requirement_engine.py ────► Ollama chat / JSON
+    │       ├── retrieval.py
+    │       ├── drafting.py ──────────────► Ollama grounded drafting
+    │       └── audit_engine.py ──────────► optional Ollama semantic check
+    │
+    └── views/workspace/auditor.py
+            │
+            └── deterministic compliance score
+```
 
-Each category keeps its own vault, draft and approval state.
+Service modules:
+
+```text
+services/
+├── models.py
+├── ollama_client.py
+├── document_ingestion.py
+├── retrieval.py
+├── requirement_engine.py
+├── drafting.py
+├── audit_engine.py
+└── exporters.py
+```
 
 ---
 
-## Design palette
+## 6. Ollama failure behaviour
 
-| Token | Hex | CSS variable | Use |
-| --- | --- | --- | --- |
-| Slate Charcoal | `#0F172A` | `--vc-bg` | Background |
-| Slate | `#1E293B` | `--vc-surface` | Surface panels |
-| Hairline | `#334155` | `--vc-border` | Borders |
-| Crisp White | `#F8FAFC` | `--vc-text` | Headers |
-| Muted Slate | `#94A3B8` | `--vc-muted` | Subtext |
-| Emerald | `#10B981` | `--vc-success` | Success / validated |
-| Crimson | `#EF4444` | `--vc-danger` | Critical risk |
-| Cyan | `#06B6D4` | `--vc-accent` | Interactive accent |
-| Amber | `#F59E0B` | `--vc-warn` | Pending review |
+If Ollama is offline or a model is missing:
+
+| Capability | Fallback |
+|---|---|
+| Vault ingestion | still works |
+| PDF/DOCX parsing | still works |
+| Retrieval | lexical search |
+| Requirement extraction | deterministic rule extraction |
+| Drafting | grounded extractive fallback |
+| Deterministic audit | still works |
+| Semantic-only audit | REVIEW instead of a fabricated PASS/FAIL |
+
+The Settings page shows the current Ollama endpoint and whether the configured chat and embedding models were detected.
 
 ---
 
-## Notes
+## 7. Tests
 
-- `services/exporters.py` imports no Streamlit and holds no state — it's the one module you can
-  unit-test directly: `from services.exporters import build_pdf`.
-- The export engine writes valid OOXML and PDF bytes without `python-docx` or `reportlab`,
-  keeping dependencies to two packages.
-- Browser storage APIs are not used; all state lives in `st.session_state`.
-- To wire this to a real retrieval backend, replace the simulated progress loops in
-  `views/workspace/studio.py` and the static content in `core/data.py`.
+Run:
+
+```powershell
+python doctor.py
+pytest -q
+```
+
+`doctor.py` checks the internal module/import graph. The service tests verify parsing, requirement fallback extraction, local retrieval and score derivation.
+
+---
+
+## 8. Important current limitations
+
+This implementation intentionally does not pretend to provide features that are not yet production-ready:
+
+- session state is not a durable database
+- no multi-user persistence
+- no immutable audit ledger
+- no production tenant isolation / VPC orchestration
+- no external KMS integration
+- no OCR for scanned image-only PDFs
+- numeric compliance checks are generic and should be expanded by domain
+- semantic verification quality depends on the selected Ollama model
+- cross-lingual BM ↔ English semantic matching uses the optional local model rather than a dedicated translation/alignment model
+- deep contradiction checking against authoritative vault versions is a recommended next phase
+
+

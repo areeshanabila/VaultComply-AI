@@ -1,122 +1,109 @@
-"""
-View 5: Settings & Security — section 9 of the original app.py.
-"""
+"""Settings & local AI diagnostics for the prototype."""
 
 from __future__ import annotations
 
-import pandas as pd
 import streamlit as st
 
-from core.config import DANGER, MUTED, SUCCESS, WARN
+from core.config import ACCENT, MUTED, SUCCESS, WARN
+from services.ollama_client import CHAT_MODEL, EMBED_MODEL, OLLAMA_BASE_URL, status
 
 
 def render() -> None:
-    st.markdown("### Settings & Security")
+    st.markdown("### Settings & Local AI")
     st.markdown(
         f'<p style="color:{MUTED};font-size:0.86rem;margin-top:-6px;">'
-        "Tenant-level security posture. Controls marked <b>locked</b> are enforced by contract "
-        "and cannot be relaxed from the application layer.</p>",
+        "Runtime diagnostics and prototype privacy controls. These labels describe this local prototype, "
+        "not an external security certification.</p>",
         unsafe_allow_html=True,
     )
 
     c1, c2 = st.columns(2, gap="large")
 
     with c1:
-        st.markdown('<div class="vc-sec-label">Data Handling</div>', unsafe_allow_html=True)
-        st.toggle("Zero Data Retention (ZDR) — enforced", value=True, disabled=True,
-                  key="zdr_toggle",
-                  help="Contractually locked ON. Prompts, retrieved context and model outputs "
-                       "are discarded at the end of each inference request.")
-        st.markdown(
-            f'<div style="font-size:0.70rem;color:{SUCCESS};margin:-6px 0 12px 26px;">'
-            "Locked on — modification requires a signed contract variation.</div>",
-            unsafe_allow_html=True,
-        )
-
-        st.session_state.model_training_optout = st.toggle(
-            "Opt out of model training & evaluation",
-            value=st.session_state.model_training_optout,
-            disabled=True,
-            help="Client content is never used to train or evaluate models.",
+        st.markdown('<div class="vc-sec-label">Local Processing</div>', unsafe_allow_html=True)
+        st.session_state.zdr = st.toggle(
+            "Keep AI processing local",
+            value=st.session_state.get("zdr", True),
+            help="VaultComply is configured to call Ollama only through localhost by default.",
         )
         st.session_state.pii_redaction = st.toggle(
-            "Automatic PII redaction before embedding (PDPA 2010)",
-            value=st.session_state.pii_redaction,
+            "PII redaction before optional embedding",
+            value=st.session_state.get("pii_redaction", True),
+            help="Prototype setting only; extend the redactor before production use.",
         )
         st.session_state.audit_log = st.toggle(
-            "Audit trail (append-only, immutable)",
-            value=st.session_state.audit_log,
+            "Session audit events",
+            value=st.session_state.get("audit_log", True),
+            help="This prototype keeps workflow state in the current Streamlit session; it is not an immutable production audit store.",
+        )
+        st.session_state.region = st.text_input(
+            "Environment label",
+            value=st.session_state.get("region", "Local prototype environment"),
         )
 
         st.markdown('<hr class="vc-divider"/>', unsafe_allow_html=True)
-        st.markdown('<div class="vc-sec-label">Data Residency & Tenancy</div>',
-                    unsafe_allow_html=True)
-        st.session_state.region = st.selectbox(
-            "VPC regional residency",
-            [
-                "Cyberjaya, Malaysia (MY-Central-1)",
-                "Kuala Lumpur, Malaysia (MY-Central-2)",
-                "Johor Bahru, Malaysia (MY-South-1)",
-            ],
-            index=[
-                "Cyberjaya, Malaysia (MY-Central-1)",
-                "Kuala Lumpur, Malaysia (MY-Central-2)",
-                "Johor Bahru, Malaysia (MY-South-1)",
-            ].index(st.session_state.region),
-        )
-        st.text_input("Tenant namespace", value="my-tn-00417-vaultcomply", disabled=True)
-        st.text_input("Encryption key custodian (KMS)", value="Customer-held · AES-256-GCM",
-                      disabled=True)
+        st.markdown('<div class="vc-sec-label">Prototype Boundaries</div>', unsafe_allow_html=True)
         st.markdown(
-            f'<div style="font-size:0.70rem;color:{MUTED};line-height:1.6;">'
-            "All regions are within Malaysian sovereign territory. Cross-border transfer is "
-            "disabled at the network policy layer.</div>",
+            f'<div style="font-size:0.73rem;color:{MUTED};line-height:1.8;">'
+            "• Uploaded document bytes are parsed in memory and are not deliberately persisted by VaultComply.<br/>"
+            "• Parsed text, chunks, embeddings, drafts and audit results live in Streamlit session state.<br/>"
+            "• Citations come from retrieved document chunks and page metadata, not from model-generated page numbers.<br/>"
+            "• Human approval and compliance scoring are separate controls.<br/>"
+            "• Production VPC/KMS/certification claims are intentionally not asserted by this prototype."
+            "</div>",
             unsafe_allow_html=True,
         )
 
     with c2:
-        st.markdown('<div class="vc-sec-label">Certifications &amp; Statutory Standing</div>',
-                    unsafe_allow_html=True)
-        certs = pd.DataFrame(
-            [
-                ["ISO/IEC 27001:2022", "Certified", "2027-03-14", "SIRIM QAS International"],
-                ["ISO 22301:2019 (BCM)", "Certified", "2027-01-08", "SIRIM QAS International"],
-                ["PDPA 2010 (Amd. 2024)", "Compliant", "Continuous", "Internal + External DPO"],
-                ["Cyber Security Act 2024", "Aligned", "Continuous", "NACSA-registered NCII"],
-                ["MOF / ePerolehan", "Registered", "2027-06-30", "Ministry of Finance Malaysia"],
-                ["SOC 2 Type II", "Attested", "2026-11-30", "Independent CPA firm"],
-            ],
-            columns=["Framework", "Status", "Valid Until", "Assessor"],
+        st.markdown('<div class="vc-sec-label">Ollama Diagnostics</div>', unsafe_allow_html=True)
+        if st.button("Refresh Ollama status", width="stretch"):
+            st.session_state["ollama_refresh_nonce"] = st.session_state.get("ollama_refresh_nonce", 0) + 1
+            ost = status(refresh=True)
+        else:
+            ost = status()
+
+        online_color = SUCCESS if ost.online else WARN
+        st.markdown(
+            f'<div class="vc-card" style="border-left:3px solid {online_color};">'
+            f'<h4 style="color:{online_color} !important;">{"Ollama Online" if ost.online else "Ollama Offline"}</h4>'
+            f'<p>Endpoint: <code>{OLLAMA_BASE_URL}</code></p>'
+            f'<p>Chat model: <b>{CHAT_MODEL}</b> — {"ready" if ost.chat_model_ready else "not installed / not detected"}</p>'
+            f'<p>Embedding model: <b>{EMBED_MODEL}</b> — {"ready" if ost.embed_model_ready else "not installed / not detected"}</p>'
+            '</div>',
+            unsafe_allow_html=True,
         )
-        st.dataframe(certs, width="stretch", hide_index=True)
+
+        if ost.online and ost.models:
+            st.markdown('<div class="vc-sec-label">Installed Ollama Models</div>', unsafe_allow_html=True)
+            st.code("\n".join(ost.models), language=None)
+        elif not ost.online:
+            st.warning("Start Ollama, then refresh this page. The app can still use deterministic extraction and lexical retrieval fallbacks.")
+
+        if not ost.chat_model_ready or not ost.embed_model_ready:
+            st.markdown('<div class="vc-sec-label">Recommended Setup</div>', unsafe_allow_html=True)
+            st.code(
+                f"ollama pull {CHAT_MODEL}\n"
+                f"ollama pull {EMBED_MODEL}",
+                language="powershell",
+            )
+            st.caption(
+                "The chat model handles grounded drafting and optional semantic checks. "
+                "The embedding model enables hybrid semantic + lexical retrieval."
+            )
 
         st.markdown('<hr class="vc-divider"/>', unsafe_allow_html=True)
-        st.markdown('<div class="vc-sec-label">Current Posture</div>', unsafe_allow_html=True)
-
+        st.markdown('<div class="vc-sec-label">Active Architecture</div>', unsafe_allow_html=True)
         rows = [
-            ("Zero Data Retention", "Enforced", SUCCESS),
-            ("Tenancy model", "Single-tenant isolated VPC", SUCCESS),
-            ("Data residency", st.session_state.region, SUCCESS),
-            ("PII redaction", "Enabled" if st.session_state.pii_redaction else "Disabled",
-             SUCCESS if st.session_state.pii_redaction else WARN),
-            ("Audit trail", "Append-only, immutable" if st.session_state.audit_log
-             else "Disabled — non-compliant", SUCCESS if st.session_state.audit_log else DANGER),
-            ("Model training", "Opted out (contractual)", SUCCESS),
-            ("Transport security", "mTLS 1.3, allow-listed egress", SUCCESS),
-            ("Human sign-off gate", "Mandatory before export", SUCCESS),
+            ("Document parsing", "Local Python", SUCCESS),
+            ("Retrieval", "Hybrid if embeddings are ready; lexical fallback otherwise", ACCENT),
+            ("Requirement extraction", "Ollama JSON extraction; deterministic fallback", ACCENT),
+            ("Drafting", "Grounded Ollama; deterministic grounded fallback", ACCENT),
+            ("Scoring", "Deterministic from actual audit results", SUCCESS),
+            ("Citations", "Retrieved file/page/chunk metadata", SUCCESS),
         ]
         html = "".join(
-            f'<div class="vc-check"><div class="ic" style="color:{c};">●</div>'
-            f'<div class="tx"><b>{label}</b> — <span style="color:{c};">{val}</span></div></div>'
-            for label, val, c in rows
+            f'<div class="vc-check"><div class="ic" style="color:{color};">●</div>'
+            f'<div class="tx"><b>{label}</b> — <span style="color:{color};">{value}</span></div></div>'
+            for label, value, color in rows
         )
         st.markdown(html, unsafe_allow_html=True)
-
-        if not st.session_state.audit_log:
-            st.markdown(
-                '<div class="vc-alert-red" style="margin-top:12px;">'
-                '<div class="t">Audit trail disabled</div>'
-                '<div class="d">Statutory submissions require an immutable audit trail. '
-                'Re-enable before releasing any ePerolehan bundle.</div></div>',
-                unsafe_allow_html=True,
-            )

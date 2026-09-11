@@ -1,111 +1,93 @@
-"""
-View 1: Home & Trust Center — section 7 of the original app.py.
-"""
+"""Home & Trust Center for the local prototype."""
 
 from __future__ import annotations
 
-import pandas as pd
 import streamlit as st
 
 from components.widgets import card, kpi
 from core.config import ACCENT, MUTED, SUCCESS, WARN
-from core.state import goto
+from core.data import CATEGORIES
+from core.state import goto, k
+from services.ollama_client import CHAT_MODEL, EMBED_MODEL, status
 
 
 def render() -> None:
     st.markdown("### Home & Trust Center")
     st.markdown(
         f'<p style="color:{MUTED};font-size:0.86rem;margin-top:-6px;">'
-        "Assurance posture, statutory alignment and operating figures for this "
-        "tenancy.</p>",
+        "Local prototype status, grounding controls and quick access to document workspaces.</p>",
         unsafe_allow_html=True,
     )
 
-    st.markdown('<div class="vc-sec-label">Operating Summary</div>', unsafe_allow_html=True)
+    parsed_docs = sum(len(st.session_state.get(k(cat, "vault_records"), [])) for cat in CATEGORIES)
+    chunks = sum(
+        sum(len(r.chunks) for r in st.session_state.get(k(cat, "vault_records"), []))
+        for cat in CATEGORIES
+    )
+    audits = sum(1 for cat in CATEGORIES if st.session_state.get(k(cat, "audit_results")))
+    ost = status()
+
+    st.markdown('<div class="vc-sec-label">Runtime Summary</div>', unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        st.markdown(kpi("Documents on File", "14", "3 added this week", ACCENT),
-                    unsafe_allow_html=True)
+        st.markdown(kpi("Parsed Vault Documents", str(parsed_docs), "current session", ACCENT), unsafe_allow_html=True)
     with c2:
-        st.markdown(kpi("Compliance Pass Rate", "98.2%", "up 4.1% on last quarter", SUCCESS),
-                    unsafe_allow_html=True)
+        st.markdown(kpi("Indexed Chunks", str(chunks), "page-aware retrieval", SUCCESS), unsafe_allow_html=True)
     with c3:
-        st.markdown(kpi("Drafting Time Saved", "32.5 hrs", "per submission cycle", SUCCESS),
-                    unsafe_allow_html=True)
+        st.markdown(kpi("Completed Audits", str(audits), "current session", SUCCESS), unsafe_allow_html=True)
     with c4:
-        st.markdown(kpi("Clauses Awaiting Sign-Off", "2", "with the Compliance Lead", WARN),
-                    unsafe_allow_html=True)
+        label = "Online" if ost.online else "Fallback"
+        detail = CHAT_MODEL if ost.chat_model_ready else "deterministic mode"
+        st.markdown(kpi("Local AI", label, detail, SUCCESS if ost.online else WARN), unsafe_allow_html=True)
 
     st.markdown('<hr class="vc-divider"/>', unsafe_allow_html=True)
-    st.markdown('<div class="vc-sec-label">Assurance Declarations</div>',
-                unsafe_allow_html=True)
+    st.markdown('<div class="vc-sec-label">How This Prototype Establishes Trust</div>', unsafe_allow_html=True)
 
     d1, d2, d3 = st.columns(3)
     with d1:
-        st.markdown(
-            card(
-                "Zero Data Retention (ZDR)",
-                "No prompt, no document payload and no model output is persisted beyond the "
-                "lifetime of the inference request. Vault embeddings remain encrypted at rest "
-                "under a customer-held KMS key (AES-256-GCM). No client content is ever used "
-                "for model training or evaluation — contractually enforced and independently "
-                "attested.",
-                SUCCESS,
-            ),
-            unsafe_allow_html=True,
-        )
+        st.markdown(card(
+            "Local AI Processing",
+            "VaultComply calls Ollama through localhost by default. If Ollama or a model is unavailable, "
+            "the workflow falls back to deterministic extraction, lexical retrieval and grounded template generation rather than failing silently.",
+            SUCCESS,
+        ), unsafe_allow_html=True)
     with d2:
-        st.markdown(
-            card(
-                "Single-Tenant VPC Isolation",
-                "Your deployment runs in a dedicated Virtual Private Cloud with a private "
-                "namespace, no shared compute and no cross-tenant vector index. Egress is "
-                "restricted to an allow-listed inference endpoint; all traffic is mutually "
-                "authenticated (mTLS) and terminated inside Malaysian sovereign territory.",
-                ACCENT,
-            ),
-            unsafe_allow_html=True,
-        )
+        st.markdown(card(
+            "Grounded Retrieval & Citations",
+            "Uploaded files are parsed into page-aware chunks. Draft citations use the retrieved document name, page, chunk ID and hash; "
+            "the language model is not trusted to invent source locations.",
+            ACCENT,
+        ), unsafe_allow_html=True)
     with d3:
-        st.markdown(
-            card(
-                "Statutory &amp; Standards Baseline",
-                "Aligned to the Personal Data Protection Act 2010 (Amd. 2024), the Cyber "
-                "Security Act 2024 (Act 854), Ministry of Finance procurement circulars, the "
-                "ePerolehan submission schema, Treasury Circular PK 2.3 and ISO/IEC 27001:2022. "
-                "Immutable audit trails are retained for statutory inspection.",
-                WARN,
-            ),
-            unsafe_allow_html=True,
-        )
+        st.markdown(card(
+            "Deterministic Compliance Score",
+            "The score is calculated from actual mandatory requirement results. Clicking Approve records human acceptance of a revision, "
+            "but it never forces a requirement to PASS or turns the score into 100%.",
+            WARN,
+        ), unsafe_allow_html=True)
 
     e1, e2, e3 = st.columns(3)
     with e1:
-        st.markdown(
-            card("Reviewer Sign-Off Required",
-                 "No generated clause may be exported until an authorised Compliance Lead has "
-                 "recorded an explicit sign-off. Every approval is written to an append-only "
-                 "trail with actor, timestamp and clause hash.", ACCENT),
-            unsafe_allow_html=True)
+        st.markdown(card(
+            "Requirement Interpretation",
+            "Client RFP/checklist text is converted into structured requirements using local Ollama when available, with an exact-source grounding gate and a deterministic fallback.",
+            ACCENT,
+        ), unsafe_allow_html=True)
     with e2:
-        st.markdown(
-            card("Source Provenance",
-                 "Every generated sentence carries a citation back to an indexed source "
-                 "document and page. Un-cited content is blocked at generation time, "
-                 "eliminating unsupported assertions in statutory submissions.", SUCCESS),
-            unsafe_allow_html=True)
+        st.markdown(card(
+            "Human Review Required",
+            "Grounded drafts remain provisional until an authorised reviewer approves them. Audit-ready PDF and submission bundle exports stay locked while mandatory findings remain unresolved.",
+            SUCCESS,
+        ), unsafe_allow_html=True)
     with e3:
-        st.markdown(
-            card("Data Residency — Cyberjaya",
-                 "Primary processing and vector storage reside in the Cyberjaya datacentre "
-                 "(MY-Central-1) with warm standby in Kuala Lumpur. No data leaves Malaysian "
-                 "jurisdiction at any point in the document lifecycle.", WARN),
-            unsafe_allow_html=True)
+        st.markdown(card(
+            "Prototype Scope",
+            "This build demonstrates local processing and workflow controls. It does not claim production VPC isolation, KMS custody, external certifications or independently attested Zero Data Retention.",
+            WARN,
+        ), unsafe_allow_html=True)
 
     st.markdown('<hr class="vc-divider"/>', unsafe_allow_html=True)
-    st.markdown('<div class="vc-sec-label">Open a Workspace</div>',
-                unsafe_allow_html=True)
-
+    st.markdown('<div class="vc-sec-label">Open a Workspace</div>', unsafe_allow_html=True)
     q1, q2, q3, q4 = st.columns(4)
     with q1:
         if st.button("Proposal Drafting", width="stretch", type="primary"):
@@ -117,26 +99,12 @@ def render() -> None:
         if st.button("Compliance Reporting", width="stretch", type="primary"):
             goto("Report Generation")
     with q4:
-        if st.button("Security & Settings", width="stretch"):
+        if st.button("Local AI & Settings", width="stretch"):
             goto("Settings & Security")
 
     st.markdown('<hr class="vc-divider"/>', unsafe_allow_html=True)
-    st.markdown('<div class="vc-sec-label">Recent Activity — Audit Trail</div>',
-                unsafe_allow_html=True)
-
-    ledger = pd.DataFrame(
-        [
-            ["2026-09-10 09:42", "Compliance Lead", "Clause Sign-Off",
-             "Tender / Section 4.2 DR SLA", "Approved"],
-            ["2026-09-10 09:15", "Proposal Writer", "Draft Generated",
-             "Proposal / Executive Summary", "Pending Review"],
-            ["2026-09-09 17:38", "Auditor", "Gap Analysis Run",
-             "Tender / VC-TDR-2026-0088", "Completed"],
-            ["2026-09-09 14:02", "Compliance Lead", "Vault Index",
-             "MOF_ePerolehan_Template.pdf", "Indexed"],
-            ["2026-09-08 11:20", "Proposal Writer", "Export — ePerolehan Bundle",
-             "Tender / VC-TDR-2026-0081", "Released"],
-        ],
-        columns=["Timestamp (MYT)", "Actor", "Event", "Object", "Outcome"],
+    st.markdown('<div class="vc-sec-label">Local AI Models</div>', unsafe_allow_html=True)
+    st.caption(
+        f"Chat: {CHAT_MODEL} ({'ready' if ost.chat_model_ready else 'not detected'}) · "
+        f"Embeddings: {EMBED_MODEL} ({'ready' if ost.embed_model_ready else 'not detected'})."
     )
-    st.dataframe(ledger, width="stretch", hide_index=True)

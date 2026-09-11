@@ -250,11 +250,10 @@ def build_bundle(category: str, docx_bytes: bytes, pdf_bytes: bytes,
             "=======================================\n"
             f"Document class      : {category}\n"
             f"Approved by         : {CURRENT_USER}\n"
-            f"Approval timestamp  : {dt.datetime.now():%Y-%m-%d %H:%M:%S} (MYT / UTC+8)\n"
-            "Data retention      : Zero Data Retention (ZDR) — no prompt or output persistence\n"
-            "Tenancy             : Single-tenant isolated namespace\n"
-            "Data residency      : Cyberjaya, Malaysia (MY-Central-1)\n"
-            "Statutory alignment : PDPA 2010 (Amd. 2024), Cyber Security Act 2024,\n"
-            "                      MOF / ePerolehan, ISO/IEC 27001:2022\n",
+            f"Approval timestamp  : {dt.datetime.now():%Y-%m-%d %H:%M:%S}\n"
+            "Prototype mode      : Local processing; no external AI API configured by default\n"
+            "Grounding           : Citations originate from locally parsed vault chunks\n"
+            "Governance          : Human approval recorded separately from compliance scoring\n"
+            "Note                : This prototype does not represent an external security certification\n",
         )
     return buf.getvalue()

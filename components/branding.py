@@ -39,10 +39,10 @@ LOGO_SVG = """
 """
 
 TRUST_BADGES = [
-    "✔ Zero Data Retention (ZDR) Active",
-    "✔ Single-Tenant Isolated Namespace",
-    "✔ Malaysia PDPA & Cyber Security Act 2024 Aligned",
-    "✔ ePerolehan & Treasury Benchmark Ready",
+    "✔ Local AI Processing",
+    "✔ No External AI API by Default",
+    "✔ Grounded Source Citations",
+    "✔ Human Approval Gate",
 ]
 
 
@@ -450,21 +450,21 @@ def render_sidebar() -> None:
             else:
                 _nav_button(label, label, key=f"nav_{label}")
 
-        region_str = st.session_state.get("region", "ap-southeast-1 (Malaysia)").split(",")[0]
-        zdr_val = "Enforced" if st.session_state.get("zdr", True) else "Disabled"
-        audit_val = "Immutable" if st.session_state.get("audit_log", True) else "Off"
+        region_str = st.session_state.get("region", "Local prototype environment").split(",")[0]
+        local_val = "Local" if st.session_state.get("zdr", True) else "Custom"
+        audit_val = "Enabled" if st.session_state.get("audit_log", True) else "Off"
 
         st.markdown('<hr class="vc-divider"/>', unsafe_allow_html=True)
         st.markdown('<div class="vc-sec-label">Tenancy</div>', unsafe_allow_html=True)
         st.markdown(
             f"""
             <div style="font-size:0.72rem;line-height:1.9;">
-              <div><span style="color:{SUCCESS};">●</span> ZDR&nbsp;&nbsp;<span style="color:{MUTED};">
-                {zdr_val}</span></div>
-              <div><span style="color:{SUCCESS};">●</span> Namespace&nbsp;&nbsp;<span style="color:{MUTED};">Isolated VPC</span></div>
-              <div><span style="color:{SUCCESS};">●</span> Residency&nbsp;&nbsp;<span style="color:{MUTED};">
+              <div><span style="color:{SUCCESS};">●</span> AI processing&nbsp;&nbsp;<span style="color:{MUTED};">
+                {local_val}</span></div>
+              <div><span style="color:{SUCCESS};">●</span> Citations&nbsp;&nbsp;<span style="color:{MUTED};">Retrieved chunks</span></div>
+              <div><span style="color:{SUCCESS};">●</span> Environment&nbsp;&nbsp;<span style="color:{MUTED};">
                 {region_str}</span></div>
-              <div><span style="color:{ACCENT};">●</span> Audit Trail&nbsp;&nbsp;<span style="color:{MUTED};">
+              <div><span style="color:{ACCENT};">●</span> Session audit&nbsp;&nbsp;<span style="color:{MUTED};">
                 {audit_val}</span></div>
             </div>
             <hr class="vc-divider"/>
