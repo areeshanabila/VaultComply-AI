@@ -11,7 +11,7 @@ from core.config import DANGER, MUTED, SUCCESS, WARN
 
 
 def render() -> None:
-    st.markdown("### ⚙️ Settings & Security")
+    st.markdown("### Settings & Security")
     st.markdown(
         f'<p style="color:{MUTED};font-size:0.86rem;margin-top:-6px;">'
         "Tenant-level security posture. Controls marked <b>locked</b> are enforced by contract "
@@ -29,7 +29,7 @@ def render() -> None:
                        "are discarded at the end of each inference request.")
         st.markdown(
             f'<div style="font-size:0.70rem;color:{SUCCESS};margin:-6px 0 12px 26px;">'
-            "🔒 Locked ON — modification requires a signed contract variation.</div>",
+            "Locked on — modification requires a signed contract variation.</div>",
             unsafe_allow_html=True,
         )
 
@@ -44,7 +44,7 @@ def render() -> None:
             value=st.session_state.pii_redaction,
         )
         st.session_state.audit_log = st.toggle(
-            "Immutable audit logging (append-only ledger)",
+            "Audit trail (append-only, immutable)",
             value=st.session_state.audit_log,
         )
 
@@ -75,7 +75,7 @@ def render() -> None:
         )
 
     with c2:
-        st.markdown('<div class="vc-sec-label">Certification & Statutory Posture</div>',
+        st.markdown('<div class="vc-sec-label">Certifications &amp; Statutory Standing</div>',
                     unsafe_allow_html=True)
         certs = pd.DataFrame(
             [
@@ -91,7 +91,7 @@ def render() -> None:
         st.dataframe(certs, width="stretch", hide_index=True)
 
         st.markdown('<hr class="vc-divider"/>', unsafe_allow_html=True)
-        st.markdown('<div class="vc-sec-label">Live Posture Summary</div>', unsafe_allow_html=True)
+        st.markdown('<div class="vc-sec-label">Current Posture</div>', unsafe_allow_html=True)
 
         rows = [
             ("Zero Data Retention", "Enforced", SUCCESS),
@@ -99,7 +99,7 @@ def render() -> None:
             ("Data residency", st.session_state.region, SUCCESS),
             ("PII redaction", "Enabled" if st.session_state.pii_redaction else "Disabled",
              SUCCESS if st.session_state.pii_redaction else WARN),
-            ("Audit ledger", "Append-only, immutable" if st.session_state.audit_log
+            ("Audit trail", "Append-only, immutable" if st.session_state.audit_log
              else "Disabled — non-compliant", SUCCESS if st.session_state.audit_log else DANGER),
             ("Model training", "Opted out (contractual)", SUCCESS),
             ("Transport security", "mTLS 1.3, allow-listed egress", SUCCESS),
@@ -115,7 +115,7 @@ def render() -> None:
         if not st.session_state.audit_log:
             st.markdown(
                 '<div class="vc-alert-red" style="margin-top:12px;">'
-                '<div class="t">❌ Audit logging disabled</div>'
+                '<div class="t">Audit trail disabled</div>'
                 '<div class="d">Statutory submissions require an immutable audit trail. '
                 'Re-enable before releasing any ePerolehan bundle.</div></div>',
                 unsafe_allow_html=True,

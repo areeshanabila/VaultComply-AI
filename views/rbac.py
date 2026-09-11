@@ -12,7 +12,7 @@ from core.config import ACCENT, MUTED, SUCCESS, WARN
 
 
 def render() -> None:
-    st.markdown("### 👥 User Access (RBAC)")
+    st.markdown("### User Access")
     st.markdown(
         f'<p style="color:{MUTED};font-size:0.86rem;margin-top:-6px;">'
         "Role-based access control for the tenant namespace. Export release is restricted to "
@@ -34,7 +34,7 @@ def render() -> None:
                     unsafe_allow_html=True)
 
     st.markdown('<hr class="vc-divider"/>', unsafe_allow_html=True)
-    st.markdown('<div class="vc-sec-label">Directory</div>', unsafe_allow_html=True)
+    st.markdown('<div class="vc-sec-label">User Directory</div>', unsafe_allow_html=True)
 
     users = pd.DataFrame(
         [
@@ -65,11 +65,11 @@ def render() -> None:
             ["View vault documents", "✔", "✔", "✔"],
             ["Index new source documents", "✔", "✔", "✘"],
             ["Run compliance gap analysis", "✔", "✔", "✔"],
-            ["Generate AI drafts", "✔", "✔", "✘"],
+            ["Generate drafts", "✔", "✔", "✘"],
             ["Edit draft canvas", "✔", "✔", "✘"],
             ["Approve clause / sign-off", "✔", "✘", "✘"],
             ["Export statutory bundles", "✔", "✘", "✘"],
-            ["Export immutable audit log", "✔", "✘", "✔"],
+            ["Export audit trail", "✔", "✘", "✔"],
             ["Modify security settings", "✔", "✘", "✘"],
             ["Manage users & roles", "✔", "✘", "✘"],
         ],
@@ -83,19 +83,19 @@ def render() -> None:
             card("Compliance Lead",
                  "Full authority. Sole holder of the clause sign-off capability and the only "
                  "role permitted to release statutory export bundles or amend tenant security "
-                 "settings. 2 active holders.", SUCCESS, "🛡️"),
+                 "settings. 2 active holders.", SUCCESS),
             unsafe_allow_html=True)
     with r2:
         st.markdown(
             card("Proposal Writer",
                  "Drafting authority. May index sources, run gap analysis, generate and edit "
                  "drafts — but cannot approve a clause or export. Enforces separation of duties. "
-                 "3 active holders.", ACCENT, "✍️"),
+                 "3 active holders.", ACCENT),
             unsafe_allow_html=True)
     with r3:
         st.markdown(
             card("Auditor",
                  "Read-only assurance. May inspect vault contents, re-run gap analysis and "
                  "export the immutable audit ledger. Cannot generate, edit or approve content. "
-                 "2 holders (1 dormant).", WARN, "🔍"),
+                 "2 holders (1 dormant).", WARN),
             unsafe_allow_html=True)

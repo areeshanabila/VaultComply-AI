@@ -47,32 +47,31 @@ def render(cat: str, cfg: dict) -> None:
     )
 
     st.markdown('<hr class="vc-divider"/>', unsafe_allow_html=True)
-    st.markdown('<div class="vc-sec-label">Action Mode</div>', unsafe_allow_html=True)
+    st.markdown('<div class="vc-sec-label">Action</div>', unsafe_allow_html=True)
 
-    tab_a, tab_b = st.tabs(["🔎  Check Existing Document Compliance",
-                            "✨  Ask AI to Generate Draft"])
+    tab_a, tab_b = st.tabs(["Verify Existing Document", "Draft a Clause"])
 
     # ── TAB A ──────────────────────────────────────────────────────────
     with tab_a:
         st.markdown(
             f'<p style="font-size:0.78rem;color:{MUTED};line-height:1.6;">'
-            f"Benchmark the active intake document against every mandatory control in "
-            f"<b>{cfg['audit_basis']}</b>. Results are written to the gap auditor panel "
+            f"Assess the intake document against every mandatory control in "
+            f"<b>{cfg['audit_basis']}</b>. Findings appear in the gap auditor "
             f"on the right.</p>",
             unsafe_allow_html=True,
         )
 
-        if st.button("▶  Run Compliance Gap Analysis", key=k(cat, "run_gap"),
+        if st.button("Run Gap Analysis", key=k(cat, "run_gap"),
                      type="primary", width="stretch"):
-            bar = st.progress(0, text="Initialising isolated inference session…")
+            bar = st.progress(0, text="Opening isolated session…")
             steps = [
-                (12, "Establishing single-tenant namespace connection…"),
+                (12, "Connecting to the tenant namespace…"),
                 (26, f"Parsing {active_intake}…"),
                 (42, "Loading audit basis: MOF_ePerolehan_Template.pdf…"),
-                (58, "Cross-referencing 2024_Master_Tender.pdf clause library…"),
+                (58, "Cross-referencing the master clause library…"),
                 (74, "Evaluating mandatory statutory controls…"),
                 (88, "Scoring disqualification risk exposure…"),
-                (100, "Analysis complete — ZDR purge executed."),
+                (100, "Assessment complete — working context discarded."),
             ]
             for pct, label in steps:
                 time.sleep(0.42)
@@ -85,7 +84,7 @@ def render(cat: str, cfg: dict) -> None:
         if st.session_state[k(cat, "analysed")]:
             approved = st.session_state[k(cat, "approved")]
             st.markdown('<hr class="vc-divider"/>', unsafe_allow_html=True)
-            st.markdown('<div class="vc-sec-label">Audit Breakdown</div>',
+            st.markdown('<div class="vc-sec-label">Control Findings</div>',
                         unsafe_allow_html=True)
 
             rows = [[f"CTRL-{i + 1:03d}", t, "PASS", "—"]
@@ -117,9 +116,9 @@ def render(cat: str, cfg: dict) -> None:
             if not approved:
                 st.markdown(
                     '<div class="vc-alert-red" style="margin-top:10px;">'
-                    '<div class="t">❌ Remediation Required</div>'
-                    '<div class="d">Switch to <b>Ask AI to Generate Draft</b> to produce a '
-                    'grounded Section 4.2 Disaster Recovery SLA clause, then record '
+                    '<div class="t">Remediation Required</div>'
+                    '<div class="d">Use <b>Draft a Clause</b> to produce a '
+                    'cited Section 4.2 Disaster Recovery SLA clause, then record '
                     'Compliance Lead sign-off to clear this finding.</div></div>',
                     unsafe_allow_html=True,
                 )
@@ -128,14 +127,14 @@ def render(cat: str, cfg: dict) -> None:
     with tab_b:
         st.markdown(
             f'<p style="font-size:0.78rem;color:{MUTED};line-height:1.6;">'
-            f"Grounded generation — every sentence is retrieved from and cited to your "
-            f"{cat.lower()} vault. Un-cited content is blocked at generation time.</p>",
+            f"Every clause is drawn from, and cited to, your {cat.lower()} registry. "
+            f"Uncited text is not released.</p>",
             unsafe_allow_html=True,
         )
 
-        st.markdown('<div class="vc-sec-label">Preset Prompts</div>', unsafe_allow_html=True)
+        st.markdown('<div class="vc-sec-label">Standard Instructions</div>', unsafe_allow_html=True)
         for chip in cfg["prompts"]:
-            if st.button(f"💬  {chip}", key=k(cat, f"chip_{chip[:18]}"), width="stretch"):
+            if st.button(chip, key=k(cat, f"chip_{chip[:18]}"), width="stretch"):
                 st.session_state[k(cat, "prompt")] = chip
                 st.rerun()
 
@@ -152,16 +151,16 @@ def render(cat: str, cfg: dict) -> None:
 
         g1, g2 = st.columns([2, 1])
         with g1:
-            if st.button("✨  Generate Compliant Draft", key=k(cat, "gen"),
+            if st.button("Generate Draft Clause", key=k(cat, "gen"),
                          type="primary", width="stretch"):
-                bar = st.progress(0, text="Opening zero-retention inference channel…")
+                bar = st.progress(0, text="Opening zero-retention channel…")
                 steps = [
-                    (15, "Embedding instruction in isolated namespace…"),
+                    (15, "Matching the instruction against the registry…"),
                     (34, f"Retrieving passages from {cfg['citation'][0]}…"),
-                    (52, "Ranking 3 grounded candidate passages…"),
-                    (70, "Composing clause with mandatory citations…"),
+                    (52, "Ranking 3 candidate passages…"),
+                    (70, "Composing the clause with citations…"),
                     (86, "Validating against MOF_ePerolehan_Template.pdf…"),
-                    (100, "Draft ready — prompt and context purged (ZDR)."),
+                    (100, "Draft ready — working context discarded."),
                 ]
                 for pct, label in steps:
                     time.sleep(0.4)
@@ -181,8 +180,7 @@ def render(cat: str, cfg: dict) -> None:
 
         if st.session_state[k(cat, "generated")]:
             st.markdown('<hr class="vc-divider"/>', unsafe_allow_html=True)
-            _draft_canvas(cat, cfg)
-            _signoff_and_export(cat, cfg)
+            _document_workspace(cat, cfg)
         else:
             st.markdown(
                 f'<div class="vc-card" style="text-align:center;padding:34px 18px;'
@@ -192,6 +190,30 @@ def render(cat: str, cfg: dict) -> None:
                 f'grounded, fully cited clause for {CURRENT_USER} review.</p></div>',
                 unsafe_allow_html=True,
             )
+
+
+@st.fragment
+def _document_workspace(cat: str, cfg: dict) -> None:
+    """Draft canvas + sign-off + exports, isolated into one rerun island.
+
+    Typing in the draft used to rerun the entire page -- both other columns,
+    the sidebar, the topbar -- for a change that only this column cares about.
+    That full redraw is what produced the flicker and the lost scroll position.
+    As a fragment, an edit reruns only what is inside this function.
+
+    The canvas and the export block have to live in the SAME fragment. The
+    download payloads are built at render time from
+    ``st.session_state[k(cat, "draft")]``; if the exports sat outside, a
+    fragment-scoped rerun would refresh the text but leave the buttons holding
+    the previous draft.
+
+    Sign-off is deliberately NOT fragment-scoped. ``st.rerun()`` defaults to
+    ``scope="app"``, so the approve/revoke buttons inside
+    :func:`_signoff_and_export` still trigger a full rerun -- which is what
+    repaints the gap auditor in the right-hand column from 67% to 100%.
+    """
+    _draft_canvas(cat, cfg)
+    _signoff_and_export(cat, cfg)
 
 
 def _body_height(text: str) -> int:
@@ -213,7 +235,7 @@ def _body_height(text: str) -> int:
 def _draft_canvas(cat: str, cfg: dict) -> None:
     src_file, src_page = cfg["citation"]
 
-    st.markdown('<div class="vc-sec-label">Editable Draft Canvas — Word-Style Document</div>',
+    st.markdown('<div class="vc-sec-label">Working Draft</div>',
                 unsafe_allow_html=True)
 
     rows_html = "".join(
@@ -226,7 +248,11 @@ def _draft_canvas(cat: str, cfg: dict) -> None:
     # ground, print margins, page shadow. The letterhead, the editable body and
     # the table are then plain children of the page rather than three separate
     # cards, which is what makes the document read as continuous.
-    with st.container(key="vc-a4-sheet"):
+    # Viewport frame (fixed height, scrolls) wrapping the page (grows freely).
+    # Splitting the two is what stops a long draft from stretching the whole
+    # browser page: the frame's height never changes, so nothing below it --
+    # sign-off, exports, the footer -- moves when the document grows.
+    with st.container(key="vc-a4-viewport"), st.container(key="vc-a4-sheet"):
         st.markdown(
             f"""
             <div class="vc-doc-head">
@@ -234,7 +260,7 @@ def _draft_canvas(cat: str, cfg: dict) -> None:
               <div class="meta">Document Ref: {cfg['doc_ref']} &nbsp;·&nbsp;
               Classification: Confidential &nbsp;·&nbsp;
               Generated: {dt.datetime.now():%d %B %Y} &nbsp;·&nbsp;
-              Author: VaultComply AI (grounded generation)</div>
+              Prepared by: VaultComply · cited to source</div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -268,11 +294,11 @@ def _draft_canvas(cat: str, cfg: dict) -> None:
         f'<div style="margin:12px 0 6px 0;">'
         f'<span class="vc-cite">[Source: {src_file}: Page {src_page}]</span>'
         f'<span style="font-size:0.72rem;color:{MUTED};margin-left:9px;">'
-        f"Grounded · 3 supporting passages matched · confidence 0.94</span></div>",
+        f"Cited · 3 supporting passages · match 0.94</span></div>",
         unsafe_allow_html=True,
     )
 
-    with st.expander(f"🔍  Provenance — verified extract from {src_file}, page {src_page}"):
+    with st.expander(f"Provenance — verified extract from {src_file}, page {src_page}"):
         st.markdown(f'<div class="vc-quote">{PROVENANCE_QUOTE}</div>', unsafe_allow_html=True)
         p1, p2 = st.columns(2)
         with p1:
@@ -282,8 +308,8 @@ def _draft_canvas(cat: str, cfg: dict) -> None:
                   <div class="vc-mono">SOURCE VERIFICATION</div>
                   <div><span style="color:{SUCCESS};">✔</span> Document: <b>{src_file}</b></div>
                   <div><span style="color:{SUCCESS};">✔</span> Location: Page {src_page}, ¶ 4–6</div>
-                  <div><span style="color:{SUCCESS};">✔</span> Retrieved from private vault namespace</div>
-                  <div><span style="color:{SUCCESS};">✔</span> Semantic match score: 0.94 / 1.00</div>
+                  <div><span style="color:{SUCCESS};">✔</span> Retrieved from the private registry</div>
+                  <div><span style="color:{SUCCESS};">✔</span> Match score: 0.94 / 1.00</div>
                 </div>""",
                 unsafe_allow_html=True,
             )
@@ -292,7 +318,7 @@ def _draft_canvas(cat: str, cfg: dict) -> None:
                 f"""
                 <div style="font-size:0.72rem;line-height:1.9;margin-top:8px;">
                   <div class="vc-mono">INTEGRITY CONTROLS</div>
-                  <div><span style="color:{SUCCESS};">✔</span> No external corpus consulted</div>
+                  <div><span style="color:{SUCCESS};">✔</span> No external sources consulted</div>
                   <div><span style="color:{SUCCESS};">✔</span> Zero Data Retention enforced on request</div>
                   <div><span style="color:{SUCCESS};">✔</span> Chunk hash: 7f3a…c19e (verified)</div>
                   <div><span style="color:{SUCCESS};">✔</span> Cross-checked vs. MOF_ePerolehan_Template.pdf</div>
@@ -305,7 +331,7 @@ def _signoff_and_export(cat: str, cfg: dict) -> None:
     approved = st.session_state[k(cat, "approved")]
 
     st.markdown('<hr class="vc-divider"/>', unsafe_allow_html=True)
-    st.markdown('<div class="vc-sec-label">Human-in-the-Loop Sign-Off</div>',
+    st.markdown('<div class="vc-sec-label">Compliance Sign-Off</div>',
                 unsafe_allow_html=True)
 
     s1, s2 = st.columns([2, 1])
@@ -314,10 +340,10 @@ def _signoff_and_export(cat: str, cfg: dict) -> None:
             st.markdown(
                 f"""
                 <div class="vc-signoff">
-                  <span class="vc-status-pill vc-approved">✔ Approved by {CURRENT_USER}</span>
+                  <span class="vc-status-pill vc-approved">Approved by {CURRENT_USER}</span>
                   <div style="font-size:0.70rem;color:{MUTED};margin-top:7px;line-height:1.6;">
                     Signed {dt.datetime.now():%d %b %Y, %H:%M} MYT · Clause hash committed to the
-                    immutable audit ledger · Export controls unlocked.</div>
+                    audit trail · Export unlocked.</div>
                 </div>""",
                 unsafe_allow_html=True,
             )
@@ -325,7 +351,7 @@ def _signoff_and_export(cat: str, cfg: dict) -> None:
             st.markdown(
                 f"""
                 <div class="vc-signoff">
-                  <span class="vc-status-pill vc-pending">⏳ Pending {CURRENT_USER} Review</span>
+                  <span class="vc-status-pill vc-pending">Pending {CURRENT_USER} review</span>
                   <div style="font-size:0.70rem;color:{MUTED};margin-top:7px;line-height:1.6;">
                     Generated content is provisional. Statutory export remains locked until an
                     authorised reviewer records sign-off.</div>
@@ -335,7 +361,7 @@ def _signoff_and_export(cat: str, cfg: dict) -> None:
     with s2:
         st.write("")
         if not approved:
-            if st.button("✔  Approve Clause / Sign-Off", key=k(cat, "approve"),
+            if st.button("✔  Approve and Sign Off", key=k(cat, "approve"),
                          width="stretch", type="primary"):
                 st.session_state[k(cat, "approved")] = True
                 st.rerun()
@@ -345,13 +371,13 @@ def _signoff_and_export(cat: str, cfg: dict) -> None:
                 st.rerun()
 
     st.markdown('<hr class="vc-divider"/>', unsafe_allow_html=True)
-    st.markdown('<div class="vc-sec-label">Export Suite — Malaysian Statutory Formats</div>',
+    st.markdown('<div class="vc-sec-label">Statutory Export Formats</div>',
                 unsafe_allow_html=True)
 
     if not approved:
         st.markdown(
             f'<div style="font-size:0.74rem;color:{WARN};margin-bottom:8px;">'
-            "🔒 Export locked — Compliance Lead sign-off required before release.</div>",
+            "Export locked — Compliance Lead sign-off required before release.</div>",
             unsafe_allow_html=True,
         )
 
@@ -438,7 +464,7 @@ def _signoff_and_export(cat: str, cfg: dict) -> None:
     x1, x2, x3 = st.columns(3)
     with x1:
         st.download_button(
-            "📄  Word (.docx)",
+            "Word (.docx)",
             data=docx_bytes,
             file_name=f"{cfg['doc_ref']}_{cat}_Draft_{stamp}.docx",
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -448,7 +474,7 @@ def _signoff_and_export(cat: str, cfg: dict) -> None:
         )
     with x2:
         st.download_button(
-            "🧾  Audit PDF (.pdf)",
+            "Audit PDF (.pdf)",
             data=pdf_bytes,
             file_name=f"{cfg['doc_ref']}_{cat}_AuditReady_{stamp}.pdf",
             mime="application/pdf",
@@ -458,7 +484,7 @@ def _signoff_and_export(cat: str, cfg: dict) -> None:
         )
     with x3:
         st.download_button(
-            "📦  ePerolehan (.zip)",
+            "ePerolehan bundle (.zip)",
             data=zip_bytes,
             file_name=f"{cfg['doc_ref']}_ePerolehan_Bundle_{stamp}.zip",
             mime="application/zip",
@@ -470,7 +496,7 @@ def _signoff_and_export(cat: str, cfg: dict) -> None:
     if approved:
         st.markdown(
             f'<div style="font-size:0.70rem;color:{MUTED};margin-top:7px;line-height:1.6;">'
-            "✔ Exports carry an embedded sign-off attestation, SHA-256 integrity manifest and "
+            "Exports carry an embedded sign-off attestation, SHA-256 integrity manifest and "
             "full source provenance. Bundle structure matches the ePerolehan submission schema."
             "</div>",
             unsafe_allow_html=True,

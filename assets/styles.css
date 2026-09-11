@@ -322,6 +322,58 @@ p, span, label, li { color: var(--vc-text); }
                overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vc-file .st { font-size: 0.66rem; margin-left: auto; white-space: nowrap; }
 
+/* ── Draft canvas: scrollable viewport frame ────────────────────────────────
+   The sheet grows with the document; THIS frame never does. Fixing the frame's
+   height is what keeps sign-off, the export row and the footer from sliding
+   down the page every time the draft gets longer -- and it means a rerun has
+   nothing left to shift.
+
+   contain: layout isolates the frame's internal layout from the rest of the
+   page. Note it is `layout` alone, NOT `layout paint`: paint containment would
+   clip the page's drop shadow against the frame's padding box. */
+.st-key-vc-a4-viewport {
+    /* flex: 0 0 auto + min-height: 0 are both required. The viewport is a
+       flex item, and a flex item defaults to min-height: auto -- it refuses to
+       be shorter than its content, so `height` alone is silently floored at
+       the full document height and nothing ever scrolls. min-height: 0 lets
+       the box be smaller than what is inside it, which is what hands the
+       overflow to the scrollbar below. */
+    flex: 0 0 auto !important;
+    height: clamp(380px, calc(100vh - 300px), 760px) !important;
+    min-height: 0 !important;
+    max-height: clamp(380px, calc(100vh - 300px), 760px) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    scroll-behavior: smooth;
+    overscroll-behavior: contain;      /* don't hand scroll back to the page */
+    contain: layout;
+    background: var(--vc-deep);
+    border: 1px solid var(--vc-border);
+    border-radius: 10px;
+    /* Side padding has to clear the sheet's shadow, or overflow-x:hidden
+       shaves it off and the page looks pasted on rather than lifted. */
+    padding: 22px 26px 28px 26px !important;
+    gap: 0 !important;
+}
+
+/* Themed scrollbar — WebKit/Blink */
+.st-key-vc-a4-viewport::-webkit-scrollbar { width: 11px; }
+.st-key-vc-a4-viewport::-webkit-scrollbar-track {
+    background: var(--vc-bg);
+    border-radius: 0 10px 10px 0;
+}
+.st-key-vc-a4-viewport::-webkit-scrollbar-thumb {
+    background: var(--vc-border);
+    border: 3px solid var(--vc-bg);
+    border-radius: 8px;
+}
+.st-key-vc-a4-viewport::-webkit-scrollbar-thumb:hover { background: var(--vc-accent); }
+/* Firefox */
+.st-key-vc-a4-viewport {
+    scrollbar-width: thin;
+    scrollbar-color: var(--vc-border) var(--vc-bg);
+}
+
 /* ── Draft canvas: one continuous A4 sheet ──────────────────────────────────
    The keyed container from views/workspace/studio.py (st.container(key=
    "vc-a4-sheet")) IS the sheet of paper. Its children -- letterhead markdown,
@@ -340,7 +392,7 @@ p, span, label, li { color: var(--vc-text); }
     padding: 2.4rem 2.5rem 2.6rem 2.5rem;   /* ~25mm print margins */
     border: 1px solid #E2E8F0;
     border-radius: 3px;
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.38);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.40);
     min-height: 720px;
     gap: 0 !important;                      /* no flex gaps between page parts */
 }
@@ -585,3 +637,109 @@ hr { border-color: var(--vc-border); }
     line-height: 1.5;
 }
 .vc-auditor-idle .basis .vc-mono { margin-bottom: 4px; letter-spacing: 0.08em; }
+
+/* ===========================================================================
+   POLISH PASS — typography, interaction states, softened boundaries
+   ---------------------------------------------------------------------------
+   Presentation only. No selector here changes what is on screen, only how it
+   reads: nothing is hidden that carries information, and every rule is scoped
+   so the A4 canvas and fixed-header hierarchy are untouched.
+   =========================================================================== */
+
+/* Streamlit hangs an anchor-link glyph off every heading, which shows up as a
+   stray chain icon beside the page title. */
+[data-testid="stHeaderActionElements"] { display: none !important; }
+[data-testid="stHeadingWithActionElements"] a { display: none !important; }
+
+/* ── Typographic hierarchy ──────────────────────────────────────────────── */
+/* Page titles: larger and slightly tighter, so a title reads as a title
+   without needing an icon in front of it. */
+[data-testid="stMainBlockContainer"] h3 {
+    font-size: 1.5rem !important;
+    font-weight: 650 !important;
+    letter-spacing: -0.018em !important;
+    margin-bottom: 0.15rem !important;
+}
+
+/* Section labels are the main wayfinding device now that the icons are gone,
+   so they carry a touch more weight, more tracking, and a lighter tone than
+   body muted text — legible at a glance, quiet when you are not looking. */
+.vc-sec-label {
+    font-size: 0.685rem;
+    font-weight: 700;
+    letter-spacing: 0.13em;
+    color: #A7B4C6;
+    margin-bottom: 10px;
+}
+
+/* Metadata and helper copy: one clear step below body text. */
+.vc-mono { letter-spacing: 0.02em; }
+
+/* ── Interaction states ─────────────────────────────────────────────────── */
+/* Keyboard focus is visible everywhere — the ring is drawn outside the control
+   so it never shifts layout. */
+.stButton button:focus-visible,
+.stDownloadButton button:focus-visible,
+.stTextArea textarea:focus-visible,
+.stTextInput input:focus-visible,
+[data-baseweb="select"]:focus-within,
+[data-testid="stFileUploaderDropzone"]:focus-within {
+    outline: 2px solid rgba(6, 182, 212, 0.55) !important;
+    outline-offset: 2px !important;
+}
+
+/* Hover reads as tactile: the surface lifts a shade and the border warms,
+   rather than the whole control flipping colour. */
+.stButton > button:hover {
+    background-color: var(--vc-hover);
+    border-color: rgba(6, 182, 212, 0.55);
+    color: var(--vc-accent);
+}
+.stButton > button:active { transform: translateY(1px); }
+
+/* Sidebar routes are a list to scan, so they read left-aligned. Streamlit
+   centres the label in a flex wrapper INSIDE the button, so aligning the
+   button alone leaves the text centred — the wrapper and the label itself
+   have to be aligned as well. */
+section[data-testid="stSidebar"] .stButton button {
+    justify-content: flex-start !important;
+    text-align: left !important;
+    letter-spacing: 0.005em;
+    padding-left: 0.85rem !important;
+}
+section[data-testid="stSidebar"] .stButton button > div,
+section[data-testid="stSidebar"] .stButton button p {
+    width: 100% !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+}
+
+/* ── Softened boundaries ────────────────────────────────────────────────── */
+/* The accent is kept for meaning — active state, focus, provenance — but at a
+   weight that sits in a dark room rather than glowing in it. */
+.vc-kpi { border-left-width: 2px; }
+.stTabs [aria-selected="true"] { border-color: rgba(6, 182, 212, 0.45) !important; }
+.vc-badge { border-color: rgba(16, 185, 129, 0.28); }
+.vc-badge-user { border-color: rgba(6, 182, 212, 0.32); }
+.vc-cite { border-color: rgba(6, 182, 212, 0.32); }
+.vc-file { border-color: var(--vc-border-soft); }
+.vc-card { border-color: var(--vc-border-soft); }
+.stTextArea textarea:focus,
+.stTextInput input:focus {
+    border-color: rgba(6, 182, 212, 0.55) !important;
+}
+
+/* ── Data density ───────────────────────────────────────────────────────── */
+/* KPI figures: tabular numerals so columns of numbers line up, and a tighter
+   set so the value reads as one object rather than loose digits. */
+.vc-kpi .val {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    font-size: 1.68rem;
+}
+.vc-kpi .lab { letter-spacing: 0.09em; font-weight: 600; }
+[data-testid="stDataFrame"] { font-variant-numeric: tabular-nums; }
+
+/* The idle auditor ring: a plain dashed circle standing in for the absent
+   score, rather than an emoji. */
+.vc-auditor-idle .ring { border-width: 2px; border-color: var(--vc-border); }

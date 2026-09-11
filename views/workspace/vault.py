@@ -16,11 +16,11 @@ from core.state import k
 
 
 def render(cat: str, cfg: dict) -> None:
-    st.markdown(f'<div class="vc-sec-label">{cfg["icon"]} {cat} Semantic Vault</div>',
+    st.markdown(f'<div class="vc-sec-label">{cat} Document Registry</div>',
                 unsafe_allow_html=True)
     st.markdown(
         f'<p style="font-size:0.74rem;color:{MUTED};margin-top:-4px;line-height:1.5;">'
-        f"Category-scoped index · single-tenant namespace · embeddings encrypted at rest.</p>",
+        f"Scoped to this document class · single-tenant namespace · encrypted at rest.</p>",
         unsafe_allow_html=True,
     )
 
@@ -30,13 +30,13 @@ def render(cat: str, cfg: dict) -> None:
 
     st.markdown(
         f'<div style="font-size:0.70rem;color:{MUTED};margin:2px 0 8px 0;">'
-        f"<b style='color:{SUCCESS};'>{len(files)}</b> documents indexed · "
-        f"vector store synchronised {dt.datetime.now():%H:%M} MYT</div>",
+        f"<b style='color:{SUCCESS};'>{len(files)}</b> documents on file · "
+        f"registry synchronised {dt.datetime.now():%H:%M} MYT</div>",
         unsafe_allow_html=True,
     )
 
     st.markdown('<hr class="vc-divider"/>', unsafe_allow_html=True)
-    st.markdown('<div class="vc-sec-label">Index New Source Document</div>',
+    st.markdown('<div class="vc-sec-label">Add a Source Document</div>',
                 unsafe_allow_html=True)
 
     up = st.file_uploader(
@@ -54,7 +54,7 @@ def render(cat: str, cfg: dict) -> None:
 
     st.markdown(
         f'<div style="font-size:0.68rem;color:{MUTED};line-height:1.6;margin-top:6px;">'
-        "🔒 Uploaded files are chunked, embedded and written to your isolated namespace. "
-        "Raw payloads are discarded immediately after embedding under ZDR policy.</div>",
+        "Uploaded files are indexed into your isolated namespace. The original payload is "
+        "discarded once indexing completes, under the zero-retention policy.</div>",
         unsafe_allow_html=True,
     )

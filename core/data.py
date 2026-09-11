@@ -42,9 +42,9 @@ The Contractor shall notify the Client's nominated Compliance Lead within thirty
 
 CATEGORIES: dict[str, dict] = {
     "Proposal": {
-        "icon": "📝",
         "route": "Proposal Generation",
-        "blurb": "Commercial and technical proposal drafting, grounded in your private proposal vault.",
+        "blurb": "Commercial and technical proposal drafting and statutory verification, "
+                 "grounded in your proposal registry.",
         "vault": [
             "2024_Corporate_Capability_Statement.pdf",
             "Client_Reference_Portfolio_v6.pdf",
@@ -73,9 +73,9 @@ CATEGORIES: dict[str, dict] = {
         "missing": "Section 4.2 Disaster Recovery SLA",
     },
     "Tender": {
-        "icon": "📋",
         "route": "Tender Generation",
-        "blurb": "Statutory tender response assembly benchmarked against MOF and ePerolehan templates.",
+        "blurb": "Tender response drafting and statutory verification against the MOF and "
+                 "ePerolehan baselines.",
         "vault": [
             "2024_Master_Tender.pdf",
             "ISO_27001_Compliance.pdf",
@@ -105,9 +105,9 @@ CATEGORIES: dict[str, dict] = {
         "missing": "Section 4.2 Disaster Recovery SLA",
     },
     "Report": {
-        "icon": "📊",
         "route": "Report Generation",
-        "blurb": "Regulatory, board and audit reporting assembled from validated internal evidence.",
+        "blurb": "Regulatory, board and audit reporting — drafted and verified against "
+                 "validated internal evidence.",
         "vault": [
             "Q3_2026_Internal_Audit_Findings.pdf",
             "ISO_27001_Compliance.pdf",

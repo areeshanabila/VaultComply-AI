@@ -17,11 +17,7 @@ STYLESHEET = ASSETS_DIR / "styles.css"
 
 # ── Identity ────────────────────────────────────────────────────────────────
 APP_NAME = "VaultComply AI"
-
-
-APP_SUBTITLE = "AI-Powered Business & Compliance Document Engine"
-
-
+APP_SUBTITLE = "Statutory Document Drafting & Compliance Verification"
 CURRENT_USER = "Compliance Lead"
 
 PAGE_ICON = "🛡️"
@@ -30,29 +26,13 @@ TENANT_ID = "MY-TN-00417"
 
 # ── Enterprise Dark Mode palette ────────────────────────────────────────────
 BG = "#0F172A"        # Slate Charcoal — background
-
-
 SURFACE = "#1E293B"   # Slate — surface panels
-
-
 BORDER = "#334155"    # hairline borders
-
-
 TEXT = "#F8FAFC"      # crisp white
-
-
 MUTED = "#94A3B8"     # muted slate subtext
-
-
 SUCCESS = "#10B981"   # emerald — validated
-
-
 DANGER = "#EF4444"    # crimson — critical risk
-
-
 ACCENT = "#06B6D4"    # cyan — interactive accent
-
-
 WARN = "#F59E0B"      # amber — pending review
 
 # Extended tokens used by the stylesheet only.
@@ -88,13 +68,16 @@ PALETTE: dict[str, str] = {
 }
 
 # ── Navigation ──────────────────────────────────────────────────────────────
+#: Route labels, in menu order. These strings are also the ROUTES keys and the
+#: value held in st.session_state["page"], so they are identifiers as much as
+#: labels -- rename one and main.py's ROUTES table has to follow.
 NAV_ITEMS = [
-    ("Home & Trust Center", "🏛️"),
-    ("Proposal Generation", "📝"),
-    ("Tender Generation", "📋"),
-    ("Report Generation", "📊"),
-    ("Settings & Security", "⚙️"),
-    ("User Access (RBAC)", "👥"),
+    "Home & Trust Center",
+    "Proposal Generation",
+    "Tender Generation",
+    "Report Generation",
+    "Settings & Security",
+    "User Access (RBAC)",
 ]
 
 #: Condensed labels for the horizontal top-nav strip, where six tabs share the
@@ -109,31 +92,36 @@ NAV_SHORT: dict[str, str] = {
     "User Access (RBAC)": "Access (RBAC)",
 }
 
-#: The three generation workspaces, collapsed under one sidebar group.
-#: (route label, icon, label shown inside the group).
-DOC_GEN_LABEL = "Document Generation"
-DOC_GEN_ICON = "🗂️"
-DOC_GEN_ITEMS: list[tuple[str, str, str]] = [
-    ("Proposal Generation", "📝", "Proposal"),
-    ("Tender Generation", "📋", "Tender"),
-    ("Report Generation", "📊", "Report"),
+#: The three document workspaces, collapsed under one sidebar group.
+#: (route label, label shown inside the group).
+#:
+#: The route labels still read "... Generation" because they are KEYS -- they
+#: index ROUTES, WORKSPACE_ROUTES and st.session_state["page"]. Nothing renders
+#: them: the sidebar shows the short label beside each, and the page title is
+#: built from the category name. Renaming them would be a routing change for no
+#: visible gain.
+DOC_GEN_LABEL = "Document Workspace"
+DOC_GEN_ITEMS: list[tuple[str, str]] = [
+    ("Proposal Generation", "Proposal"),
+    ("Tender Generation", "Tender"),
+    ("Report Generation", "Report"),
 ]
 
 #: Sidebar rendering order, declarative so the shape of the menu lives here
 #: rather than inside render_sidebar. "item" is a plain route button; "group"
-#: is the expandable Document Generation block built from DOC_GEN_ITEMS.
+#: is the expandable Document Workspace block built from DOC_GEN_ITEMS.
 #: NAV_ITEMS above stays the flat, canonical list of every route.
-SIDEBAR_NAV: list[tuple[str, str, str]] = [
-    ("item", "Home & Trust Center", "🏛️"),
-    ("group", DOC_GEN_LABEL, DOC_GEN_ICON),
-    ("item", "Settings & Security", "⚙️"),
-    ("item", "User Access (RBAC)", "👥"),
+SIDEBAR_NAV: list[tuple[str, str]] = [
+    ("item", "Home & Trust Center"),
+    ("group", DOC_GEN_LABEL),
+    ("item", "Settings & Security"),
+    ("item", "User Access (RBAC)"),
 ]
 
 #: Landing page, and the fallback for an unknown route.
-DEFAULT_PAGE = NAV_ITEMS[0][0]
+DEFAULT_PAGE = NAV_ITEMS[0]
 
-#: Route label -> category key, for the three generation workspaces.
+#: Route label -> category key, for the three document workspaces.
 WORKSPACE_ROUTES: dict[str, str] = {
     "Proposal Generation": "Proposal",
     "Tender Generation": "Tender",

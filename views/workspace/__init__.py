@@ -1,5 +1,5 @@
 """
-Views 2-4: the document generation workspaces — section 8 of the original
+Views 2-4: the document workspaces — section 8 of the original
 app.py.
 
 All three routes (Proposal / Tender / Report) share this one implementation;
@@ -24,7 +24,7 @@ from views.workspace import auditor, studio, vault
 def render(cat: str) -> None:
     cfg = CATEGORIES[cat]
 
-    st.markdown(f"### {cfg['icon']} {cat} Generation")
+    st.markdown(f"### {cat} Workspace")
     st.markdown(
         f'<p style="color:{MUTED};font-size:0.86rem;margin-top:-6px;">{cfg["blurb"]} '
         f"Document ref <span class='vc-mono' style='color:{ACCENT};'>{cfg['doc_ref']}</span></p>",

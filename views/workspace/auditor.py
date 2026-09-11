@@ -36,19 +36,19 @@ def render(cat: str, cfg: dict) -> None:
 
 
 def _render_idle(cfg: dict) -> None:
-    st.markdown('<div class="vc-sec-label">⚖️ Compliance Gap Auditor</div>',
+    st.markdown('<div class="vc-sec-label">Compliance Gap Auditor</div>',
                 unsafe_allow_html=True)
     st.markdown(
         f"""
         <div class="vc-card vc-auditor-idle">
           <div class="ring">⏳</div>
-          <h4>Awaiting analysis</h4>
-          <p>No audit has run for this document yet.</p>
-          <p style="margin-top:10px;">Run <b>Compliance Gap Analysis</b> to benchmark the
-          active intake, or <b>Generate Compliant Draft</b> to produce a grounded clause —
-          either one scores this document and fills this panel.</p>
+          <h4>No assessment on record</h4>
+          <p>This document has not been assessed yet.</p>
+          <p style="margin-top:10px;">Run a <b>Gap Analysis</b> to assess the intake against the
+          statutory baseline, or <b>Generate a Draft Clause</b>. Either one scores this
+          document and fills this panel.</p>
           <div class="basis">
-            <div class="vc-mono">AUDIT BASIS ON STANDBY</div>
+            <div class="vc-mono">STATUTORY BASELINE</div>
             {cfg['audit_basis']}
           </div>
         </div>
@@ -63,7 +63,7 @@ def _render_results(cat: str, cfg: dict) -> None:
     color = SUCCESS if approved else DANGER
     caption = "Fully Compliant" if approved else "Action Required"
 
-    st.markdown('<div class="vc-sec-label">⚖️ Compliance Gap Auditor</div>',
+    st.markdown('<div class="vc-sec-label">Compliance Gap Auditor</div>',
                 unsafe_allow_html=True)
     st.markdown(gauge(score, caption, color), unsafe_allow_html=True)
 
@@ -73,7 +73,7 @@ def _render_results(cat: str, cfg: dict) -> None:
           <div style="font-size:0.86rem;font-weight:600;color:{color};">
             {score}% — {caption}</div>
           <div style="font-size:0.68rem;color:{MUTED};margin-top:4px;line-height:1.5;">
-            <b>Audit basis:</b><br/>{cfg['audit_basis']}</div>
+            <b>Statutory baseline:</b><br/>{cfg['audit_basis']}</div>
         </div>""",
         unsafe_allow_html=True,
     )
@@ -81,7 +81,7 @@ def _render_results(cat: str, cfg: dict) -> None:
     if st.session_state[k(cat, "analysed")]:
         st.markdown(
             f'<div style="font-size:0.68rem;color:{ACCENT};text-align:center;margin-bottom:8px;">'
-            f"Gap analysis completed {dt.datetime.now():%H:%M} MYT · "
+            f"Assessed {dt.datetime.now():%H:%M} MYT · "
             f"{len(cfg['passed']) + 1} mandatory controls evaluated</div>",
             unsafe_allow_html=True,
         )
@@ -92,7 +92,7 @@ def _render_results(cat: str, cfg: dict) -> None:
         st.markdown(
             f"""
             <div class="vc-alert-green">
-              <div class="t">✔ Mandatory Clause Satisfied</div>
+              <div class="t">Mandatory Clause Satisfied</div>
               <div class="d">Section 4.2 Disaster Recovery SLA is present, cited to
               {cfg['citation'][0]} p.{cfg['citation'][1]}, and signed off by {CURRENT_USER}.
               Disqualification risk cleared.</div>
@@ -103,7 +103,7 @@ def _render_results(cat: str, cfg: dict) -> None:
         st.markdown(
             f"""
             <div class="vc-alert-red">
-              <div class="t">❌ Missing Mandatory Clause</div>
+              <div class="t">Missing Mandatory Clause</div>
               <div class="d"><b>{cfg['missing']}</b><br/>
               Disqualification Risk — mandated by {cfg['audit_basis'].split(' + ')[0]}.
               Submission will be rejected at the ePerolehan compliance gate without this clause.</div>
@@ -131,8 +131,8 @@ def _render_results(cat: str, cfg: dict) -> None:
 
     st.markdown(
         f'<div style="font-size:0.66rem;color:{MUTED};margin-top:12px;line-height:1.6;">'
-        f"Evaluated against <b>{len(cfg['passed']) + 1}</b> mandatory controls derived from the "
-        "audit basis documents. Scoring is deterministic and reproducible for audit purposes."
+        f"Evaluated against <b>{len(cfg['passed']) + 1}</b> mandatory controls drawn from the "
+        "statutory baseline documents. Scoring is deterministic and reproducible."
         "</div>",
         unsafe_allow_html=True,
     )
