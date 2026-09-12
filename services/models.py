@@ -43,6 +43,10 @@ class Requirement:
     unit: str | None = None
     expected_concepts: list[str] = field(default_factory=list)
     severity: str = "mandatory"
+    # Scope separates requirements that can be checked against the uploaded
+    # written document from formatting, plagiarism, presentation and other
+    # administrative controls that need a different verification method.
+    scope: str = "report_content"
 
 
 @dataclass

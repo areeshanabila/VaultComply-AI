@@ -156,31 +156,45 @@ def _render_findings(cat: str) -> None:
 
     rows = []
     for r in results:
-        risk = "Mandatory" if r.requirement.mandatory and r.status != "PASS" else "—"
-        rows.append([r.requirement.code, r.requirement.title, r.status, risk])
-    df = pd.DataFrame(rows, columns=["Control", "Requirement", "Result", "Risk"])
+        if r.status == "N/A":
+            risk = "Out of scope"
+        elif r.status == "REVIEW":
+            risk = "Manual review"
+        else:
+            risk = "Mandatory" if r.requirement.mandatory and r.status != "PASS" else "—"
+        scope_label = r.requirement.scope.replace("_", " ").title()
+        rows.append([r.requirement.code, r.requirement.title, scope_label, r.status, risk])
+    df = pd.DataFrame(rows, columns=["Control", "Requirement", "Scope", "Result", "Risk"])
     st.dataframe(df, width="stretch", hide_index=True, height=min(360, 48 + len(rows) * 34))
 
-    passed_n = sum(1 for r in results if r.status == "PASS")
-    fail_n = sum(1 for r in results if r.status == "FAIL")
+    content = [r for r in results if r.requirement.scope == "report_content"]
+    passed_n = sum(1 for r in content if r.status == "PASS")
+    scoreable_n = sum(1 for r in content if r.status in {"PASS", "FAIL"})
+    fail_n = sum(1 for r in content if r.status == "FAIL")
     review_n = sum(1 for r in results if r.status == "REVIEW")
+    na_n = sum(1 for r in results if r.status == "N/A")
     m1, m2, m3 = st.columns(3)
     with m1:
-        st.markdown(kpi("Controls Passed", f"{passed_n}/{len(results)}", "", SUCCESS), unsafe_allow_html=True)
+        st.markdown(kpi("Content Passed", f"{passed_n}/{scoreable_n or len(content)}", "", SUCCESS), unsafe_allow_html=True)
     with m2:
-        st.markdown(kpi("Failures / Review", f"{fail_n}/{review_n}", "", DANGER if fail_n else WARN), unsafe_allow_html=True)
+        st.markdown(kpi("Fail / Manual / N-A", f"{fail_n}/{review_n}/{na_n}", "", DANGER if fail_n else WARN), unsafe_allow_html=True)
     with m3:
-        st.markdown(kpi("Compliance Score", "—" if score is None else f"{score}%", "", SUCCESS if score == 100 else DANGER), unsafe_allow_html=True)
+        st.markdown(kpi("Content Score", "—" if score is None else f"{score}%", "", SUCCESS if score == 100 else DANGER), unsafe_allow_html=True)
 
-    missing = [r for r in results if r.status in {"FAIL", "REVIEW"}]
+    missing = [
+        r for r in results
+        if r.requirement.scope == "report_content" and r.status in {"FAIL", "REVIEW"}
+    ]
     if missing:
         st.markdown(
             '<div class="vc-alert-red" style="margin-top:10px;">'
-            '<div class="t">Remediation Required</div>'
-            '<div class="d">Select or type a missing requirement in <b>Draft a Clause</b>. '
-            'VaultComply will retrieve grounded evidence from the Semantic Vault before drafting.</div></div>',
+            '<div class="t">Content Remediation Required</div>'
+            '<div class="d">Select or type a missing report-content requirement in <b>Draft a Clause</b>. '
+            'Formatting, plagiarism and presentation controls are handled separately and are not treated as missing clauses.</div></div>',
             unsafe_allow_html=True,
         )
+    elif review_n or na_n:
+        st.caption("Written-content checks passed. Manual/external or out-of-scope controls are listed separately and do not reduce the automatic content score.")
 
 
 def _draft_tab(cat: str, cfg: dict) -> None:
@@ -193,7 +207,10 @@ def _draft_tab(cat: str, cfg: dict) -> None:
 
     st.markdown('<div class="vc-sec-label">Standard Instructions</div>', unsafe_allow_html=True)
     # Prioritize real failed requirements as quick actions.
-    failures = [r for r in st.session_state[k(cat, "audit_results")] if r.status in {"FAIL", "REVIEW"}]
+    failures = [
+        r for r in st.session_state[k(cat, "audit_results")]
+        if r.requirement.scope == "report_content" and r.status in {"FAIL", "REVIEW"}
+    ]
     for r in failures[:3]:
         label = f"Fix: {r.requirement.title[:70]}"
         if st.button(label, key=k(cat, f"fix_{r.requirement.code}"), width="stretch"):
@@ -451,9 +468,12 @@ def _render_exports(cat: str, cfg: dict, approved: bool) -> None:
 
     zip_bytes = build_bundle(cat, docx_bytes, pdf_bytes, manifest, [r.name for r in st.session_state[k(cat, "vault_records")]])
 
-    # Word draft can be released after human approval. Audit-ready formats require no FAIL/REVIEW.
-    unresolved = any(r.status != "PASS" for r in results) if results else True
-    audit_ready = approved and bool(results) and not unresolved
+    # Word draft can be released after human approval. Audit-ready exports require
+    # all written-content requirements to pass. Manual formatting/plagiarism checks
+    # and out-of-scope presentation/submission controls do not permanently lock export.
+    content_results = [r for r in results if r.requirement.scope == "report_content"]
+    unresolved = any(r.status != "PASS" for r in content_results) if content_results else True
+    audit_ready = approved and bool(content_results) and not unresolved
 
     x1, x2, x3 = st.columns(3)
     with x1:
@@ -478,7 +498,7 @@ def _render_exports(cat: str, cfg: dict, approved: bool) -> None:
             width="stretch", key=k(cat, "dl_zip"),
         )
     if approved and not audit_ready:
-        st.caption("Word export is available, but audit PDF/bundle stay locked until every mandatory requirement passes.")
+        st.caption("Word export is available, but audit PDF/bundle stay locked until every written-content requirement passes.")
 
 
 def re_heading(line: str) -> bool:

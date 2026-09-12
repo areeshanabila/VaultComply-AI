@@ -43,15 +43,21 @@ def _render_idle(cat: str) -> None:
 def _render_results(cat: str) -> None:
     results = st.session_state[k(cat, "audit_results")]
     score = compliance_score(results)
-    fail_n = sum(1 for r in results if r.status == "FAIL")
-    review_n = sum(1 for r in results if r.status == "REVIEW")
+    content_results = [r for r in results if r.requirement.scope == "report_content"]
+    fail_n = sum(1 for r in content_results if r.status == "FAIL")
+    content_review_n = sum(1 for r in content_results if r.status == "REVIEW")
+    manual_n = sum(1 for r in results if r.status == "REVIEW" and r.requirement.scope != "report_content")
+    na_n = sum(1 for r in results if r.status == "N/A")
 
-    if score == 100 and not fail_n and not review_n:
-        color, caption = SUCCESS, "Fully Compliant"
+    if score == 100 and not fail_n and not content_review_n:
+        if manual_n or na_n:
+            color, caption = SUCCESS, "Written Content Compliant"
+        else:
+            color, caption = SUCCESS, "Fully Compliant"
     elif fail_n:
         color, caption = DANGER, "Action Required"
     else:
-        color, caption = WARN, "Review Required"
+        color, caption = WARN, "Content Review Required"
 
     shown_score = 0 if score is None else score
     st.markdown('<div class="vc-sec-label">Compliance Gap Auditor</div>', unsafe_allow_html=True)
@@ -61,13 +67,16 @@ def _render_results(cat: str) -> None:
         f'<div style="font-size:0.86rem;font-weight:600;color:{color};">'
         f'{"—" if score is None else str(score)+"%"} — {caption}</div>'
         f'<div style="font-size:0.68rem;color:{MUTED};margin-top:4px;line-height:1.5;">'
-        f'<b>Requirements:</b> {len(results)} · FAIL {fail_n} · REVIEW {review_n}</div></div>',
+        f'<b>Content controls:</b> {len(content_results)} · FAIL {fail_n} · REVIEW {content_review_n}'
+        f' &nbsp;|&nbsp; Manual {manual_n} · N/A {na_n}</div></div>',
         unsafe_allow_html=True,
     )
 
     st.markdown('<hr class="vc-divider"/>', unsafe_allow_html=True)
 
-    unresolved = [r for r in results if r.status in {"FAIL", "REVIEW"}]
+    unresolved = [
+        r for r in content_results if r.status in {"FAIL", "REVIEW"}
+    ]
     if unresolved:
         first = unresolved[0]
         box = "vc-alert-red" if first.status == "FAIL" else "vc-card"
@@ -78,10 +87,14 @@ def _render_results(cat: str) -> None:
             unsafe_allow_html=True,
         )
     else:
+        detail = (
+            "All written-content requirements passed. Manual/external and out-of-scope controls remain listed below."
+            if manual_n or na_n else
+            "The current audited document satisfies every extracted written-content requirement."
+        )
         st.markdown(
-            '<div class="vc-alert-green"><div class="t">All mandatory requirements passed</div>'
-            '<div class="d">The current audited document satisfies every extracted mandatory requirement. '
-            'Human approval remains a separate governance step.</div></div>',
+            f'<div class="vc-alert-green"><div class="t">Written-content audit complete</div>'
+            f'<div class="d">{html.escape(detail)} Human approval remains a separate governance step.</div></div>',
             unsafe_allow_html=True,
         )
 
@@ -92,6 +105,8 @@ def _render_results(cat: str) -> None:
             icon, col = "✔", SUCCESS
         elif result.status == "FAIL":
             icon, col = "✘", DANGER
+        elif result.status == "N/A":
+            icon, col = "–", MUTED
         else:
             icon, col = "?", WARN
         title = html.escape(result.requirement.title)
@@ -106,7 +121,8 @@ def _render_results(cat: str) -> None:
     engine = st.session_state[k(cat, "requirement_engine")] or "unknown"
     st.markdown(
         f'<div style="font-size:0.66rem;color:{MUTED};margin-top:12px;line-height:1.6;">'
-        f'Requirements extracted via <b>{html.escape(engine)}</b>. Score is derived from mandatory PASS results; '
-        'human approval never forces a compliance score.</div>',
+        f'Requirements extracted via <b>{html.escape(engine)}</b>. The automatic score uses only written-content '
+        'PASS/FAIL controls; manual formatting/plagiarism reviews and N/A presentation/submission controls are shown separately. '
+        'Human approval never forces a compliance score.</div>',
         unsafe_allow_html=True,
     )

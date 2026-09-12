@@ -7,7 +7,51 @@ from services.ollama_client import OllamaError, chat_json, status
 
 
 def _norm(text: str) -> str:
-    return re.sub(r"[^a-z0-9.%]+", " ", text.casefold()).strip()
+    text = text.casefold()
+    # Normalise a few common UK/US variants so headings do not false-fail.
+    text = text.replace("organizational", "organisational")
+    text = text.replace("organization", "organisation")
+    text = text.replace("behavioral", "behavioural")
+    text = text.replace("behavior", "behaviour")
+    return re.sub(r"[^a-z0-9.%]+", " ", text).strip()
+
+
+def _strip_heading_prefix(text: str) -> str:
+    value = re.sub(r"\s+", " ", text).strip(" .:-")
+    value = re.sub(r"(?i)^\s*PART\s+\d+\s*[:.)-]?\s*", "", value)
+    value = re.sub(r"(?i)^\s*\d+(?:\.\d+)*\s*[:.)-]?\s*", "", value)
+    return value.strip(" .:-")
+
+
+def _section_candidates(req: Requirement) -> list[str]:
+    raw: list[str] = []
+    for value in (req.target, req.title, req.source_text):
+        if not value:
+            continue
+        value = re.sub(r"\s+", " ", value).strip()
+        # For source quotes / titles such as "PART 1: Full Heading", use the
+        # meaningful heading after the PART prefix as an alias.
+        part = re.search(r"(?i)\bPART\s+\d+\s*:\s*(.+)$", value)
+        if part:
+            raw.append(part.group(1).strip())
+        raw.append(value)
+        raw.append(_strip_heading_prefix(value))
+        simplified = re.sub(r"(?i)\s+(?:section|plan)$", "", _strip_heading_prefix(value)).strip()
+        if simplified:
+            raw.append(simplified)
+
+    out: list[str] = []
+    seen: set[str] = set()
+    for candidate in raw:
+        n = _norm(candidate)
+        if len(n) < 4 or n in seen:
+            continue
+        # Literal PART 1 / PART 2 tokens are not meaningful enough by themselves.
+        if re.fullmatch(r"part\s+\d+", n):
+            continue
+        seen.add(n)
+        out.append(candidate)
+    return out
 
 
 def _snippet(text: str, terms: list[str], span: int = 240) -> tuple[str, str]:
@@ -15,6 +59,12 @@ def _snippet(text: str, terms: list[str], span: int = 240) -> tuple[str, str]:
     positions = [lower.find(t.casefold()) for t in terms if t and lower.find(t.casefold()) >= 0]
     pos = min(positions) if positions else -1
     if pos < 0:
+        # Try normalised terms against normalised text only to locate approximate evidence.
+        norm_text = _norm(text)
+        for term in terms:
+            n = _norm(term)
+            if n and n in norm_text:
+                return "document text", term
         return "", ""
     start = max(0, pos - span)
     end = min(len(text), pos + span)
@@ -23,30 +73,37 @@ def _snippet(text: str, terms: list[str], span: int = 240) -> tuple[str, str]:
 
 
 def _section_presence(text: str, req: Requirement) -> AuditResult:
-    raw_target = (req.target or req.title).strip()
-    # Prefer the structured target from requirement extraction. Only derive one
-    # from source text when the extractor could not supply it.
-    candidates: list[str] = []
-    if req.target:
-        candidates.append(req.target.strip())
-        simplified = re.sub(r"(?i)\s+(?:section|plan)$", "", req.target.strip()).strip()
-        if simplified and simplified not in candidates:
-            candidates.append(simplified)
-    else:
-        derived = re.sub(r"(?i)^.*?(?:include|contain|provide)\s+(?:an?\s+)?", "", raw_target)
-        derived = re.sub(r"[.;].*$", "", derived).strip(" .")
-        if derived:
-            candidates.append(derived)
-            simplified = re.sub(r"(?i)\s+(?:section|plan)$", "", derived).strip()
-            if simplified and simplified not in candidates:
-                candidates.append(simplified)
-
+    candidates = _section_candidates(req)
     norm_text = _norm(text)
-    for c in candidates:
-        if c and _norm(c) in norm_text:
-            loc, excerpt = _snippet(text, [c])
-            return AuditResult(req, "PASS", f"Required section/concept detected: {c}", loc, excerpt)
-    label = candidates[0] if candidates else req.title
+
+    # Exact semantic heading match after normalisation handles numbering changes,
+    # punctuation, line wraps and common UK/US spelling variants.
+    for candidate in candidates:
+        nc = _norm(candidate)
+        if nc and nc in norm_text:
+            loc, excerpt = _snippet(text, [candidate])
+            return AuditResult(req, "PASS", f"Required section/concept detected: {_strip_heading_prefix(candidate)}", loc, excerpt)
+
+    # Conservative token-overlap fallback for a heading that is slightly reworded.
+    stop = {"the", "and", "for", "with", "of", "to", "a", "an", "part", "section", "system"}
+    doc_lines = [line.strip() for line in text.splitlines() if line.strip() and len(line.strip()) <= 220]
+    for candidate in candidates:
+        target_tokens = {t for t in _norm(_strip_heading_prefix(candidate)).split() if len(t) > 2 and t not in stop}
+        if len(target_tokens) < 2:
+            continue
+        for line in doc_lines:
+            line_tokens = {t for t in _norm(_strip_heading_prefix(line)).split() if len(t) > 2 and t not in stop}
+            if not line_tokens:
+                continue
+            overlap = len(target_tokens & line_tokens) / len(target_tokens)
+            if overlap >= 0.75:
+                return AuditResult(
+                    req, "PASS",
+                    f"Equivalent section heading detected: {line}",
+                    "document heading", line[:800],
+                )
+
+    label = _strip_heading_prefix(candidates[0]) if candidates else _strip_heading_prefix(req.title)
     return AuditResult(req, "FAIL", f"Required section was not detected: {label}")
 
 
@@ -66,7 +123,6 @@ def _numeric(text: str, req: Requirement) -> AuditResult:
 
     if not values:
         return AuditResult(req, "FAIL", f"No numeric evidence with unit '{req.unit or 'number'}' was detected.")
-    # Conservative generic rule: any observed value satisfying the threshold can prove the requirement.
     satisfying = [v for v in values if (req.minimum is None or v >= req.minimum) and (req.maximum is None or v <= req.maximum)]
     if satisfying:
         v = satisfying[0]
@@ -98,7 +154,7 @@ def _semantic(text: str, req: Requirement, *, use_ollama: bool) -> AuditResult:
         st = status()
         if st.online and st.chat_model_ready:
             system = (
-                "You are a conservative compliance verifier. Compare ONE requirement against the supplied document. "
+                "You are a conservative compliance verifier. Compare ONE written-document requirement against the supplied document. "
                 "Return JSON with status PASS, FAIL, or REVIEW; evidence; excerpt. PASS only when the document clearly satisfies it. "
                 "FAIL when clearly missing or contradicted. REVIEW when ambiguous. Do not use outside knowledge. "
                 "Treat semantically equivalent Bahasa Melayu and English wording as equivalent even when the phrases are not verbatim."
@@ -122,7 +178,6 @@ def _semantic(text: str, req: Requirement, *, use_ollama: bool) -> AuditResult:
                     )
             except OllamaError:
                 pass
-    # Never fake certainty if a semantic requirement could not be verified.
     phrase_result = _phrase(text, req)
     if phrase_result.status == "PASS":
         phrase_result.evidence = "Deterministic concept coverage suggests this requirement is satisfied."
@@ -133,6 +188,27 @@ def _semantic(text: str, req: Requirement, *, use_ollama: bool) -> AuditResult:
 def audit_document(text: str, requirements: list[Requirement], *, use_ollama: bool = True) -> list[AuditResult]:
     results: list[AuditResult] = []
     for req in requirements:
+        # These controls are important, but cannot honestly be proven by looking
+        # for words inside the report text.
+        if req.scope == "report_format":
+            results.append(AuditResult(
+                req, "REVIEW",
+                "Manual formatting review required. The current text parser does not verify font, line spacing or page-number placement.",
+            ))
+            continue
+        if req.scope == "academic_integrity":
+            results.append(AuditResult(
+                req, "REVIEW",
+                "External similarity/plagiarism check required; keyword presence in the report is not valid evidence.",
+            ))
+            continue
+        if req.scope in {"presentation", "submission", "administrative"} or req.rule_type == "not_applicable":
+            results.append(AuditResult(
+                req, "N/A",
+                "Not applicable to the written-document content audit.",
+            ))
+            continue
+
         if req.rule_type == "section_presence":
             result = _section_presence(text, req)
         elif req.rule_type == "numeric_threshold":
@@ -148,8 +224,19 @@ def audit_document(text: str, requirements: list[Requirement], *, use_ollama: bo
 
 
 def compliance_score(results: list[AuditResult]) -> int | None:
-    mandatory = [r for r in results if r.requirement.mandatory]
-    if not mandatory:
+    """Score only automatically decidable written-content controls.
+
+    Manual formatting/plagiarism reviews and N/A presentation/submission controls
+    are shown to the user but are not counted as failures in the automatic score.
+    A semantic REVIEW is likewise not converted into a fabricated failure.
+    """
+    scoreable = [
+        r for r in results
+        if r.requirement.mandatory
+        and r.requirement.scope == "report_content"
+        and r.status in {"PASS", "FAIL"}
+    ]
+    if not scoreable:
         return None
-    passed = sum(1 for r in mandatory if r.status == "PASS")
-    return round(100 * passed / len(mandatory))
+    passed = sum(1 for r in scoreable if r.status == "PASS")
+    return round(100 * passed / len(scoreable))
